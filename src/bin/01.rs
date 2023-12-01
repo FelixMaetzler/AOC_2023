@@ -8,9 +8,10 @@ pub fn part_one(input: &str) -> Option<u32> {
             .trim()
             .lines()
             .map(|l| {
-                let vec: Vec<_> = l.chars().filter(|c| c.is_ascii_digit()).collect();
-                let n1 = vec.first().unwrap().to_digit(10).unwrap();
-                let n2 = vec.last().unwrap().to_digit(10).unwrap();
+                let n1 = l.find(|c: char| c.is_ascii_digit()).unwrap();
+                let n2 = l.rfind(|c: char| c.is_ascii_digit()).unwrap();
+                let n1 = l.chars().nth(n1).unwrap().to_digit(10).unwrap();
+                let n2 = l.chars().nth(n2).unwrap().to_digit(10).unwrap();
                 n1 * 10 + n2
             })
             .sum(),
@@ -23,7 +24,7 @@ pub fn part_two(input: &str) -> Option<u32> {
         let mut n1 = None;
         let mut n2 = None;
         'outer: for i in 0..line.len() {
-            for j in i..line.len() {
+            for j in i..line.len().min(i + 5) {
                 let slice = &line[i..=j];
                 if let Some(x) = parse_number(slice) {
                     n1 = Some(x);
@@ -31,8 +32,9 @@ pub fn part_two(input: &str) -> Option<u32> {
                 }
             }
         }
+
         'outer: for i in (0..line.len()).rev() {
-            for j in (0..=i).rev() {
+            for j in (0.max(i.saturating_sub(5))..=i).rev() {
                 let slice = &line[j..=i];
                 if let Some(x) = parse_number(slice) {
                     n2 = Some(x);
