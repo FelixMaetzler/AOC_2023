@@ -32,9 +32,7 @@ pub fn part_two(input: &str) -> Option<u32> {
                     .unwrap();
                 let n2 = (0..line.len())
                     .rev()
-                    .flat_map(|i| {
-                        iter::repeat(i).zip((0.max(i.saturating_sub(MAX_CHAR_MATCH))..=i).rev())
-                    })
+                    .flat_map(|i| iter::repeat(i).zip((i.saturating_sub(MAX_CHAR_MATCH)..=i).rev()))
                     //Same as above but in reverse
                     .find_map(|(i, j)| parse_number(&line[j..=i]))
                     .unwrap();
