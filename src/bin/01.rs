@@ -19,30 +19,24 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 const MAX_CHAR_MATCH: usize = 5;
 pub fn part_two(input: &str) -> Option<u32> {
-    Some(
-        input
-            .trim()
-            .lines()
-            .map(|line| {
-                let n1 = (0..line.len())
-                    .flat_map(|i| iter::repeat(i).zip(i..line.len().min(i + MAX_CHAR_MATCH)))
-                    // Previous generates a Iterator where the first number goes through the hole line
-                    // and the second number goes from the first number a maximum of MAX_CHAR_MATCH
-                    .find_map(|(i, j)| parse_number(&line[i..=j]))
-                    .unwrap();
-                let n2 = (0..line.len())
-                    .rev()
-                    .flat_map(|i| iter::repeat(i).zip((i.saturating_sub(MAX_CHAR_MATCH)..=i).rev()))
-                    //Same as above but in reverse
-                    .find_map(|(i, j)| parse_number(&line[j..=i]))
-                    .unwrap();
-
-                n1 * 10 + n2
-            })
-            .sum(),
-    )
+    Some(input.trim().lines().map(solve_part_2).sum())
 }
+fn solve_part_2(line: &str) -> u32 {
+    let n1 = (0..line.len())
+        .flat_map(|i| iter::repeat(i).zip(i..line.len().min(i + MAX_CHAR_MATCH)))
+        // Previous generates a Iterator where the first number goes through the hole line
+        // and the second number goes from the first number a maximum of MAX_CHAR_MATCH
+        .find_map(|(i, j)| parse_number(&line[i..=j]))
+        .unwrap();
+    let n2 = (0..line.len())
+        .rev()
+        .flat_map(|i| iter::repeat(i).zip((i.saturating_sub(MAX_CHAR_MATCH)..=i).rev()))
+        //Same as above but in reverse
+        .find_map(|(i, j)| parse_number(&line[j..=i]))
+        .unwrap();
 
+    n1 * 10 + n2
+}
 fn parse_number(input: &str) -> Option<u32> {
     match input {
         "1" | "one" => Some(1),
