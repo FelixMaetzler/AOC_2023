@@ -1,4 +1,4 @@
-use std::vec;
+use std::iter;
 
 advent_of_code::solution!(1);
 
@@ -17,47 +17,45 @@ pub fn part_one(input: &str) -> Option<u32> {
             .sum(),
     )
 }
-
+const MAX_CHAR_MATCH: usize = 5;
 pub fn part_two(input: &str) -> Option<u32> {
-    let mut vec = vec![];
-    for line in input.trim().lines() {
-        let mut n1 = None;
-        let mut n2 = None;
-        'outer: for i in 0..line.len() {
-            for j in i..line.len().min(i + 5) {
-                let slice = &line[i..=j];
-                if let Some(x) = parse_number(slice) {
-                    n1 = Some(x);
-                    break 'outer;
-                }
-            }
-        }
+    Some(
+        input
+            .trim()
+            .lines()
+            .map(|line| {
+                let n1 = (0..line.len())
+                    .flat_map(|i| iter::repeat(i).zip(i..line.len().min(i + MAX_CHAR_MATCH)))
+                    // Previous generates a Iterator where the first number goes through the hole line
+                    // and the second number goes from the first number a maximum of MAX_CHAR_MATCH
+                    .find_map(|(i, j)| parse_number(&line[i..=j]))
+                    .unwrap();
+                let n2 = (0..line.len())
+                    .rev()
+                    .flat_map(|i| {
+                        iter::repeat(i).zip((0.max(i.saturating_sub(MAX_CHAR_MATCH))..=i).rev())
+                    })
+                    //Same as above but in reverse
+                    .find_map(|(i, j)| parse_number(&line[j..=i]))
+                    .unwrap();
 
-        'outer: for i in (0..line.len()).rev() {
-            for j in (0.max(i.saturating_sub(5))..=i).rev() {
-                let slice = &line[j..=i];
-                if let Some(x) = parse_number(slice) {
-                    n2 = Some(x);
-                    break 'outer;
-                }
-            }
-        }
-        vec.push(n1.unwrap() * 10 + n2.unwrap());
-    }
-    Some(vec.into_iter().sum())
+                n1 * 10 + n2
+            })
+            .sum(),
+    )
 }
 
 fn parse_number(input: &str) -> Option<u32> {
     match input {
-        "one" | "1" => Some(1),
-        "two" | "2" => Some(2),
-        "three" | "3" => Some(3),
-        "four" | "4" => Some(4),
-        "five" | "5" => Some(5),
-        "six" | "6" => Some(6),
-        "seven" | "7" => Some(7),
-        "eight" | "8" => Some(8),
-        "nine" | "9" => Some(9),
+        "1" | "one" => Some(1),
+        "2" | "two" => Some(2),
+        "3" | "three" => Some(3),
+        "4" | "four" => Some(4),
+        "5" | "five" => Some(5),
+        "6" | "six" => Some(6),
+        "7" | "seven" => Some(7),
+        "8" | "eight" => Some(8),
+        "9" | "nine" => Some(9),
         _ => None,
     }
 }
