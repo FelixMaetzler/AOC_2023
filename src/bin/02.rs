@@ -68,14 +68,14 @@ impl FromStr for Game {
 }
 pub fn part_one(input: &str) -> Option<u32> {
     let vec = parse(input);
-    let top = &Subset {
+    let vgl = &Subset {
         red: 12,
         green: 13,
         blue: 14,
     };
     Some(
         vec.into_iter()
-            .filter(|g| g.is_possible_in_reference_to(top))
+            .filter(|g| g.is_possible_in_reference_to(vgl))
             .map(|g| g.id)
             .sum(),
     )
@@ -89,7 +89,6 @@ fn parse(input: &str) -> Vec<Game> {
 }
 pub fn part_two(input: &str) -> Option<u32> {
     let vec = parse(input);
-
     Some(vec.into_iter().map(|g| g.power()).sum())
 }
 
@@ -102,10 +101,20 @@ mod tests {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(8));
     }
+    #[test]
+    fn test_part_one_actual() {
+        let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(2105));
+    }
 
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(2286));
+    }
+    #[test]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(72422));
     }
 }
