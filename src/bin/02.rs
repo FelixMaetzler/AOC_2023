@@ -43,6 +43,12 @@ impl Game {
             .iter()
             .all(|s| s.is_possible_in_reference_to(other))
     }
+    fn power(&self) -> u32 {
+        let red = self.cubes.iter().map(|s| s.red).max().unwrap();
+        let green = self.cubes.iter().map(|s| s.green).max().unwrap();
+        let blue = self.cubes.iter().map(|s| s.blue).max().unwrap();
+        red * green * blue
+    }
 }
 impl FromStr for Game {
     type Err = ();
@@ -82,7 +88,9 @@ fn parse(input: &str) -> Vec<Game> {
         .collect()
 }
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let vec = parse(input);
+
+    Some(vec.into_iter().map(|g| g.power()).sum())
 }
 
 #[cfg(test)]
@@ -98,6 +106,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(2286));
     }
 }
