@@ -1,9 +1,12 @@
-use std::fmt::Debug;
+use std::{
+    collections::{HashMap, HashSet},
+    fmt::Debug,
+};
 
-use advent_of_code::Grid;
+use advent_of_code::{Grid, OwnIndex};
 
 advent_of_code::solution!(3);
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 enum Tile {
     Empty,
     Digit(char),
@@ -66,7 +69,44 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    None
+    let grid = parse(input);
+    let mut s = String::new();
+    let mut finished = false;
+    let mut index_gear = HashSet::new();
+    let mut erg: HashMap<usize, Vec<u32>> = HashMap::new();
+    for y in 0..grid.height() {
+        for x in 0..grid.width() {
+            match grid.get((y, x)).unwrap() {
+                Tile::Empty if !s.is_empty() => finished = true,
+                Tile::Digit(d) => {
+                    s.push(*d);
+                    for (tile, index) in grid.neighbours8_with_index((y, x)) {
+                        let index = index.to_flat_index(&grid);
+                        if matches!(tile, Tile::Symbol('*')) {
+                            index_gear.insert(index);
+                        }
+                    }
+                }
+                Tile::Symbol(_) if !s.is_empty() => finished = true,
+                _ => {}
+            }
+            if finished {
+                let n: u32 = s.parse().unwrap();
+                for i in &index_gear {
+                    erg.entry(*i).and_modify(|v| v.push(n)).or_insert(vec![n]);
+                }
+                finished = false;
+                index_gear.clear();
+                s.clear();
+            }
+        }
+    }
+    Some(
+        erg.values()
+            .filter(|v| v.len() == 2)
+            .map(|v| v[0] * v[1])
+            .sum(),
+    )
 }
 fn parse(input: &str) -> Grid<Tile> {
     Grid::from_iter_iter(
@@ -85,10 +125,20 @@ mod tests {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(4361));
     }
+    #[test]
+    fn test_part_one_actual() {
+        let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(553079));
+    }
 
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(467835));
+    }
+    #[test]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(84363105));
     }
 }

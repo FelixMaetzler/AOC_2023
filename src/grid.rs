@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::fmt::Write;
 use std::ops::Index;
+
 pub trait OwnIndex<T> {
     fn to_flat_index(&self, grid: &Grid<T>) -> usize;
     fn to_2d_index(&self, grid: &Grid<T>) -> (usize, usize);
@@ -23,6 +24,7 @@ impl<T> OwnIndex<T> for (usize, usize) {
         *self
     }
 }
+
 pub struct Grid<T> {
     data: Vec<T>,
     rows: usize,
@@ -104,6 +106,47 @@ impl<T> Grid<T> {
         if let Some(a) = self.get((y + 1, x + 1)) {
             ret.push(a.clone());
         }
+        ret
+    }
+    pub fn neighbours8_with_index(&self, index: impl OwnIndex<T>) -> Vec<(T, impl OwnIndex<T>)>
+    where
+        T: Clone,
+    {
+        let (y, x) = index.to_2d_index(self);
+        let mut ret = vec![];
+        if y.checked_sub(1).is_some() {
+            let index = (y - 1, x);
+            ret.push((self.get(index).unwrap().clone(), index));
+            let index = (y - 1, x + 1);
+            if let Some(a) = self.get(index) {
+                ret.push((a.clone(), index));
+            }
+        }
+        if x.checked_sub(1).is_some() {
+            let index = (y, x - 1);
+            ret.push((self.get(index).unwrap().clone(), index));
+            let index = (y + 1, x - 1);
+            if let Some(a) = self.get(index) {
+                ret.push((a.clone(), index));
+            }
+        }
+        if x.checked_sub(1).is_some() && y.checked_sub(1).is_some() {
+            let index = (y - 1, x - 1);
+            ret.push((self.get(index).unwrap().clone(), index));
+        }
+        let index = (y + 1, x);
+        if let Some(a) = self.get(index) {
+            ret.push((a.clone(), index));
+        }
+        let index = (y + 1, x + 1);
+        if let Some(a) = self.get(index) {
+            ret.push((a.clone(), index));
+        }
+        let index = (y, x + 1);
+        if let Some(a) = self.get(index) {
+            ret.push((a.clone(), index));
+        }
+
         ret
     }
     pub fn height(&self) -> usize {
