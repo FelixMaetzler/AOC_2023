@@ -4,3 +4,5 @@ pub use grid::Grid;
 pub use grid::OwnIndex;
 pub mod template;
 pub use day::*;
+mod range_ext;
+pub use range_ext::*;
