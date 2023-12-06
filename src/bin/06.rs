@@ -1,16 +1,24 @@
 advent_of_code::solution!(6);
 
-pub fn part_one(input: &str) -> Option<u64> {
+pub fn part_one(input: &str) -> Option<usize> {
     let (times, distances) = parse_part_one(input);
     Some(
         times
             .into_iter()
             .zip(distances)
-            .map(|(t, d)| solve(t, d))
+            .map(|(t, d)| winning_count(t, d))
             .product(),
     )
 }
-fn solve(time: u64, distance: u64) -> u64 {
+fn winning_count(time: u64, distance: u64) -> usize {
+    (0..=time).filter(|t| winnable(*t, time, distance)).count()
+}
+fn winnable(t: u64, max_time: u64, distance: u64) -> bool {
+    let speed = t;
+    let d = speed * (max_time - t);
+    d > distance
+}
+fn solve_part_two(time: u64, distance: u64) -> u64 {
     // can be solved with PQ Formula
     // d = speed * (time - t) > distance
     // speed is in this case just t
@@ -31,7 +39,7 @@ fn solve(time: u64, distance: u64) -> u64 {
 }
 pub fn part_two(input: &str) -> Option<u64> {
     let (time, distance) = parse_part_two(input);
-    Some(solve(time, distance))
+    Some(solve_part_two(time, distance))
 }
 fn parse_part_one(input: &str) -> (Vec<u64>, Vec<u64>) {
     let mut it = input.trim().lines();
