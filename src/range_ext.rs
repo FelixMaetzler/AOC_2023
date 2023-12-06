@@ -12,15 +12,26 @@ where
 pub enum Relation {
     Lower,
     IntersectingLow,
-    Contained,
+    IsContained,
     IntersectingHigh,
     Higher,
+    Equal,
+    //ContainsOther,
 }
 impl<T> RangeExt<T> for Range<T>
 where
     T: PartialOrd + Clone,
 {
     fn status(&self, b: &Self) -> Relation {
+        if self.start == b.start && self.end == b.end {
+            return Relation::Equal;
+        }
+        /*
+        if self.start <= b.start && self.end >= b.end {
+            return Relation::ContainsOther;
+        }
+        */
+
         if self.end <= b.start {
             return Relation::Lower;
         }
@@ -28,7 +39,7 @@ where
             return Relation::IntersectingLow;
         }
         if self.start >= b.start && self.end <= b.end {
-            return Relation::Contained;
+            return Relation::IsContained;
         }
         if self.start < b.end && self.end > b.end {
             return Relation::IntersectingHigh;
@@ -43,9 +54,11 @@ where
         match self.status(b) {
             Relation::Lower => None,
             Relation::IntersectingLow => Some(b.clone().start..self.clone().end),
-            Relation::Contained => Some(self.clone()),
+            Relation::IsContained => Some(self.clone()),
             Relation::IntersectingHigh => Some(self.clone().start..b.clone().end),
             Relation::Higher => None,
+            Relation::Equal => Some(self.clone()),
+            //Relation::ContainsOther => Some(b.clone()),
         }
     }
 
@@ -53,16 +66,16 @@ where
         match self.status(b) {
             Relation::Lower => Count::Single(self.clone()),
             Relation::IntersectingLow => Count::Single(self.clone().start..(b.clone().start)),
-            Relation::Contained => Count::None,
+            Relation::IsContained => Count::None,
             Relation::IntersectingHigh => Count::Single(b.clone().end..self.clone().end),
             Relation::Higher => Count::Single(self.clone()),
-            /*
             Relation::Equal => Count::None,
-            Relation::Contains => Count::Double(
+            /*
+            Relation::ContainsOther => Count::Double(
                 self.clone().start..b.clone().start,
                 b.clone().end..self.clone().end,
             ),
-            */
+             */
         }
     }
 }
@@ -86,7 +99,7 @@ fn test_intersection_low() {
 }
 #[test]
 fn test_is_contained() {
-    assert_eq!((3..6).status(&(3..7)), Relation::Contained);
+    assert_eq!((3..6).status(&(3..7)), Relation::IsContained);
     assert_eq!((3..6).get_intersection(&(3..7)), Some(3..6));
     assert_eq!((3..6).get_non_intersection(&(3..7)), Count::None);
 }
@@ -104,19 +117,19 @@ fn test_higher() {
 }
 /*
 #[test]
-fn test_contains() {
-    assert_eq!((0..10).status(&(3..7)), Relation::Contains);
+fn test_contains_other() {
+    assert_eq!((0..10).status(&(3..7)), Relation::ContainsOther);
     assert_eq!((0..10).get_intersection(&(3..7)), Some(3..7));
     assert_eq!(
         (0..10).get_non_intersection(&(3..7)),
         Count::Double(0..3, 7..10)
     );
 }
+*/
+
 #[test]
 fn test_equal() {
     assert_eq!((3..7).status(&(3..7)), Relation::Equal);
     assert_eq!((3..7).get_intersection(&(3..7)), Some(3..7));
     assert_eq!((3..7).get_non_intersection(&(3..7)), Count::None);
 }
-
-*/

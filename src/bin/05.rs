@@ -38,6 +38,7 @@ pub fn part_two(input: &str) -> Option<u64> {
                     if let Count::Single(remainder) = x.get_non_intersection(k) {
                         curr.push_back(remainder);
                     }
+
                     continue 'outer;
                 }
             }
