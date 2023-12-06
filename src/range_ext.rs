@@ -16,7 +16,7 @@ pub enum Relation {
     IntersectingHigh,
     Higher,
     Equal,
-    //ContainsOther,
+    ContainsOther,
 }
 impl<T> RangeExt<T> for Range<T>
 where
@@ -26,11 +26,10 @@ where
         if self.start == b.start && self.end == b.end {
             return Relation::Equal;
         }
-        /*
-        if self.start <= b.start && self.end >= b.end {
+
+        if self.start < b.start && self.end > b.end {
             return Relation::ContainsOther;
         }
-        */
 
         if self.end <= b.start {
             return Relation::Lower;
@@ -58,7 +57,7 @@ where
             Relation::IntersectingHigh => Some(self.clone().start..b.clone().end),
             Relation::Higher => None,
             Relation::Equal => Some(self.clone()),
-            //Relation::ContainsOther => Some(b.clone()),
+            Relation::ContainsOther => Some(b.clone()),
         }
     }
 
@@ -70,12 +69,10 @@ where
             Relation::IntersectingHigh => Count::Single(b.clone().end..self.clone().end),
             Relation::Higher => Count::Single(self.clone()),
             Relation::Equal => Count::None,
-            /*
             Relation::ContainsOther => Count::Double(
                 self.clone().start..b.clone().start,
                 b.clone().end..self.clone().end,
             ),
-             */
         }
     }
 }
@@ -115,7 +112,7 @@ fn test_higher() {
     assert_eq!((1..2).get_intersection(&(0..1)), None);
     assert_eq!((1..2).get_non_intersection(&(0..1)), Count::Single(1..2));
 }
-/*
+
 #[test]
 fn test_contains_other() {
     assert_eq!((0..10).status(&(3..7)), Relation::ContainsOther);
@@ -125,7 +122,6 @@ fn test_contains_other() {
         Count::Double(0..3, 7..10)
     );
 }
-*/
 
 #[test]
 fn test_equal() {

@@ -35,8 +35,13 @@ pub fn part_two(input: &str) -> Option<u64> {
                 if let Some(i) = x.get_intersection(k) {
                     let a = convert(&i, k, v);
                     next.push_back(a);
-                    if let Count::Single(remainder) = x.get_non_intersection(k) {
-                        curr.push_back(remainder);
+                    match x.get_non_intersection(k) {
+                        Count::None => {}
+                        Count::Single(remainder) => curr.push_back(remainder),
+                        Count::Double(rem1, rem2) => {
+                            curr.push_back(rem1);
+                            curr.push_back(rem2);
+                        }
                     }
 
                     continue 'outer;
