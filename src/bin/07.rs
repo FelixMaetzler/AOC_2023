@@ -238,9 +238,8 @@ mod tests {
     #[test]
     fn test_part_one_actual() {
         let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
-        assert_eq!(result, Some(248812215));
+        assert_eq!(result, Some(248_812_215));
     }
-
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
