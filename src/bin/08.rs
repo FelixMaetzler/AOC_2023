@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 advent_of_code::solution!(8);
 
 pub fn part_one(input: &str) -> Option<u64> {
@@ -20,7 +18,7 @@ pub fn part_one(input: &str) -> Option<u64> {
 
 pub fn part_two(input: &str) -> Option<u64> {
     let (instructions, map) = parse(input);
-    let mut curr = map
+    let mut curr: Vec<&Data<'_>> = map
         .keys()
         .filter(|s| s.pos == Pos::Start)
         .collect::<Vec<_>>();
@@ -32,7 +30,7 @@ pub fn part_two(input: &str) -> Option<u64> {
         while x.pos != Pos::End {
             c += 1;
             let dir = it.next().unwrap();
-            let node = map.get(*x).unwrap();
+            let node = map.get(x).unwrap();
             *x = match dir {
                 Dir::Left => &node.left,
                 Dir::Right => &node.right,
@@ -42,22 +40,8 @@ pub fn part_two(input: &str) -> Option<u64> {
     }
     Some(curr_lcm)
 }
-fn lcm(x: u64, y: u64) -> u64 {
-    (x * y) / gcd(x, y)
-}
-fn gcd(a: u64, b: u64) -> u64 {
-    let mut a = a;
-    let mut b = b;
-    loop {
-        let h = a % b;
-        a = b;
-        b = h;
-        if b == 0 {
-            return a;
-        }
-    }
-}
-#[derive(Eq, PartialEq, Hash)]
+
+#[derive(Eq, PartialEq, Hash, Clone)]
 struct Data<'a> {
     data: &'a str,
     pos: Pos,
@@ -81,6 +65,7 @@ impl<'a> Data<'a> {
         }
     }
 }
+#[derive(Clone)]
 struct Node<'a> {
     left: Data<'a>,
     right: Data<'a>,
@@ -96,7 +81,8 @@ impl<'a> Node<'a> {
         })
     }
 }
-fn parse(input: &str) -> (Vec<Dir>, HashMap<Data, Node>) {
+// You can change the return type `OwnHashMap` to `HashMap` without any problems
+fn parse(input: &str) -> (Vec<Dir>, OwnHashMap<Data, Node>) {
     let (left, right) = input.trim().split_once("\n\n").unwrap();
     let left = left.chars().map(|c| Dir::try_from(c).unwrap()).collect();
     let map = right
@@ -109,12 +95,6 @@ fn parse(input: &str) -> (Vec<Dir>, HashMap<Data, Node>) {
         })
         .collect();
     (left, map)
-}
-#[derive(Eq, PartialEq, Hash)]
-enum Pos {
-    Start,
-    Middle,
-    End,
 }
 #[derive(Clone)]
 enum Dir {
@@ -130,6 +110,53 @@ impl TryFrom<char> for Dir {
             'R' => Ok(Self::Right),
             _ => Err(()),
         }
+    }
+}
+/// Is a replacement for a regular HashMap, that is optimized for exactly this szenario
+/// and uses a Vec unter the hood
+struct OwnHashMap<K, V> {
+    values: Vec<Option<V>>,
+    keys: Vec<Option<K>>,
+}
+impl<'a> OwnHashMap<Data<'a>, Node<'a>> {
+    fn get(&self, key: &Data<'a>) -> Option<&Node<'a>> {
+        self.values.get(hash(key.data)).unwrap().as_ref()
+    }
+    fn keys(&self) -> impl Iterator<Item = &Data> {
+        self.keys.iter().filter_map(|e| e.as_ref())
+    }
+}
+impl<'a> FromIterator<(Data<'a>, Node<'a>)> for OwnHashMap<Data<'a>, Node<'a>> {
+    fn from_iter<T: IntoIterator<Item = (Data<'a>, Node<'a>)>>(iter: T) -> Self {
+        let mut values = vec![None; 26 * 26 * 26];
+        let mut keys = vec![None; 26 * 26 * 26];
+        for (k, v) in iter {
+            let hash = hash(k.data);
+            values[hash] = Some(v);
+            keys[hash] = Some(k);
+        }
+        Self { values, keys }
+    }
+}
+fn hash(x: &str) -> usize {
+    let x = x.as_bytes();
+    ((x[0] - b'A') as usize) + 26 * ((x[1] - b'A') as usize) + 26 * 26 * ((x[2] - b'A') as usize)
+}
+#[derive(Eq, PartialEq, Hash, Clone)]
+enum Pos {
+    Start,
+    Middle,
+    End,
+}
+
+fn lcm(x: u64, y: u64) -> u64 {
+    (x * y) / gcd(x, y)
+}
+fn gcd(a: u64, b: u64) -> u64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
     }
 }
 #[cfg(test)]
