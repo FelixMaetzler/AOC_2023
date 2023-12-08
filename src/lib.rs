@@ -6,3 +6,5 @@ pub mod template;
 pub use day::*;
 mod range_ext;
 pub use range_ext::*;
+mod math;
+pub use math::*;

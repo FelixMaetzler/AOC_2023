@@ -1,3 +1,5 @@
+use advent_of_code::lcm;
+
 advent_of_code::solution!(8);
 
 pub fn part_one(input: &str) -> Option<u64> {
@@ -58,10 +60,11 @@ impl<'a> Data<'a> {
                 data: s,
                 pos: Pos::End,
             },
-            _ => Self {
+            'B'..='Y' => Self {
                 data: s,
                 pos: Pos::Middle,
             },
+            c => unreachable!("Undefinded char detected: {c}"),
         }
     }
 }
@@ -71,18 +74,20 @@ struct Node<'a> {
     right: Data<'a>,
 }
 impl<'a> Node<'a> {
-    fn from_str(s: &'a str) -> Result<Self, ()> {
+    fn from_str(s: &'a str) -> Self {
         let (n1, n2) = s.split_once(", ").unwrap();
         let n1 = &n1[1..];
         let n2 = &n2[..n2.len() - 1];
-        Ok(Self {
+        Self {
             left: Data::from_str(n1),
             right: Data::from_str(n2),
-        })
+        }
     }
 }
-// You can change the return type `OwnHashMap` to `HashMap` without any problems
-fn parse(input: &str) -> (Vec<Dir>, OwnHashMap<Data, Node>) {
+/// You can change the return type `OptimizedHashMap` to `HashMap` without any problems
+/// The solution takes then longer.
+/// This optimization was made to bring the time for part 2 under 1 ms
+fn parse(input: &str) -> (Vec<Dir>, OptimizedHashMap<Data, Node>) {
     let (left, right) = input.trim().split_once("\n\n").unwrap();
     let left = left.chars().map(|c| Dir::try_from(c).unwrap()).collect();
     let map = right
@@ -90,7 +95,7 @@ fn parse(input: &str) -> (Vec<Dir>, OwnHashMap<Data, Node>) {
         .map(|l| {
             let (k, rem) = l.split_once(" = ").unwrap();
             let k = Data::from_str(k);
-            let data = Node::from_str(rem).unwrap();
+            let data = Node::from_str(rem);
             (k, data)
         })
         .collect();
@@ -114,11 +119,11 @@ impl TryFrom<char> for Dir {
 }
 /// Is a replacement for a regular HashMap, that is optimized for exactly this szenario
 /// and uses a Vec unter the hood
-struct OwnHashMap<K, V> {
+struct OptimizedHashMap<K, V> {
     values: Vec<Option<V>>,
     keys: Vec<Option<K>>,
 }
-impl<'a> OwnHashMap<Data<'a>, Node<'a>> {
+impl<'a> OptimizedHashMap<Data<'a>, Node<'a>> {
     fn get(&self, key: &Data<'a>) -> Option<&Node<'a>> {
         self.values.get(hash(key.data)).unwrap().as_ref()
     }
@@ -126,7 +131,7 @@ impl<'a> OwnHashMap<Data<'a>, Node<'a>> {
         self.keys.iter().filter_map(|e| e.as_ref())
     }
 }
-impl<'a> FromIterator<(Data<'a>, Node<'a>)> for OwnHashMap<Data<'a>, Node<'a>> {
+impl<'a> FromIterator<(Data<'a>, Node<'a>)> for OptimizedHashMap<Data<'a>, Node<'a>> {
     fn from_iter<T: IntoIterator<Item = (Data<'a>, Node<'a>)>>(iter: T) -> Self {
         let mut values = vec![None; 26 * 26 * 26];
         let mut keys = vec![None; 26 * 26 * 26];
@@ -147,17 +152,6 @@ enum Pos {
     Start,
     Middle,
     End,
-}
-
-fn lcm(x: u64, y: u64) -> u64 {
-    (x * y) / gcd(x, y)
-}
-fn gcd(a: u64, b: u64) -> u64 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
-    }
 }
 #[cfg(test)]
 mod tests {
