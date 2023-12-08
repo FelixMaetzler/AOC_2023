@@ -18,7 +18,7 @@ where
 {
     (x.clone() * y.clone()) / gcd(x, y)
 }
-// Computes the Greatest Common Divisor in a recursive Way
+/// Computes the Greatest Common Divisor in a recursive Way
 pub fn gcd<T>(a: T, b: T) -> T
 where
     T: Eq + NonNegative + Clone + Default + std::ops::Rem<Output = T>,
