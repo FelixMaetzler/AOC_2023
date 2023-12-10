@@ -1,9 +1,8 @@
 use std::fmt::Debug;
 use std::fmt::Write;
 use std::ops::Deref;
-use std::ops::DerefMut;
 use std::ops::Index;
-
+use std::ops::IndexMut;
 pub trait OwnIndex<T>
 where
     Self: Copy,
@@ -161,40 +160,40 @@ impl<T> Grid<T> {
 
         ret
     }
-    pub fn get_north(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+    pub fn get_north(&self, index: impl OwnIndex<T>) -> Option<(usize, &T)> {
         let index = index.to_2d_index(self);
         if index.0 == 0 {
             None
         } else {
             let index = (index.0 - 1, index.1);
-            Some((index, self.get(index).unwrap()))
+            Some((index.to_flat_index(self), self.get(index).unwrap()))
         }
     }
-    pub fn get_south(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+    pub fn get_south(&self, index: impl OwnIndex<T>) -> Option<(usize, &T)> {
         let index = index.to_2d_index(self);
         let index = (index.0 + 1, index.1);
         if index.0 >= self.height() {
             None
         } else {
-            Some((index, self.get(index).unwrap()))
+            Some((index.to_flat_index(self), self.get(index).unwrap()))
         }
     }
-    pub fn get_west(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+    pub fn get_west(&self, index: impl OwnIndex<T>) -> Option<(usize, &T)> {
         let index = index.to_2d_index(self);
         if index.1 == 0 {
             None
         } else {
             let index = (index.0, index.1 - 1);
-            Some((index, self.get(index).unwrap()))
+            Some((index.to_flat_index(self), self.get(index).unwrap()))
         }
     }
-    pub fn get_east(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+    pub fn get_east(&self, index: impl OwnIndex<T>) -> Option<(usize, &T)> {
         let index = index.to_2d_index(self);
         let index = (index.0, index.1 + 1);
         if index.1 >= self.width() {
             None
         } else {
-            Some((index, self.get(index).unwrap()))
+            Some((index.to_flat_index(self), self.get(index).unwrap()))
         }
     }
     pub fn height(&self) -> usize {
@@ -208,7 +207,13 @@ impl<T> Index<(usize, usize)> for Grid<T> {
     type Output = T;
 
     fn index(&self, index: (usize, usize)) -> &Self::Output {
-        &self.data[index.0 * self.cols + index.1]
+        &self.data[index.to_flat_index(self)]
+    }
+}
+impl<T> IndexMut<(usize, usize)> for Grid<T> {
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut Self::Output {
+        let index = index.to_flat_index(self);
+        &mut self.data[index]
     }
 }
 impl<T> Index<usize> for Grid<T> {
@@ -216,6 +221,11 @@ impl<T> Index<usize> for Grid<T> {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.data[index]
+    }
+}
+impl<T> IndexMut<usize> for Grid<T> {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.data[index]
     }
 }
 impl<T> Debug for Grid<T>
@@ -227,6 +237,10 @@ where
             .data
             .chunks(self.cols)
             .fold("\n".to_string(), |mut output, b| {
+                let b = b.iter().fold("".to_string(), |mut output, b| {
+                    let _ = write!(output, "{b:?}");
+                    output
+                });
                 let _ = writeln!(output, "{b:?}");
                 output
             });
@@ -249,8 +263,10 @@ impl<T> Deref for Grid<T> {
         &self.data[..]
     }
 }
+/*
 impl<T> DerefMut for Grid<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data[..]
     }
 }
+*/
