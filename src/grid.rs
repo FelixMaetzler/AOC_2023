@@ -1,8 +1,13 @@
 use std::fmt::Debug;
 use std::fmt::Write;
+use std::ops::Deref;
+use std::ops::DerefMut;
 use std::ops::Index;
 
-pub trait OwnIndex<T> {
+pub trait OwnIndex<T>
+where
+    Self: Copy,
+{
     fn to_flat_index(&self, grid: &Grid<T>) -> usize;
     fn to_2d_index(&self, grid: &Grid<T>) -> (usize, usize);
 }
@@ -17,6 +22,8 @@ impl<T> OwnIndex<T> for usize {
 }
 impl<T> OwnIndex<T> for (usize, usize) {
     fn to_flat_index(&self, grid: &Grid<T>) -> usize {
+        debug_assert!(self.0 < grid.height());
+        debug_assert!(self.1 < grid.width());
         self.0 * grid.cols + self.1
     }
 
@@ -53,7 +60,12 @@ impl<T> Grid<T> {
         Self { data, rows, cols }
     }
     pub fn get(&self, index: impl OwnIndex<T>) -> Option<&T> {
-        self.data.get(index.to_flat_index(self))
+        let idx = index.to_2d_index(self);
+        if idx.0 < self.height() && idx.1 < self.width() {
+            self.data.get(index.to_flat_index(self))
+        } else {
+            None
+        }
     }
 
     pub fn neighbours4(&self, index: impl OwnIndex<T>) -> Vec<T>
@@ -149,6 +161,36 @@ impl<T> Grid<T> {
 
         ret
     }
+    pub fn get_north(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+        let index = index.to_2d_index(self);
+        index.0.checked_sub(1).map(|y| {
+            (
+                (y, index.1).to_flat_index(self),
+                self.get((y, index.1).to_flat_index(self)).unwrap(),
+            )
+        })
+    }
+    pub fn get_south(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+        let index = index.to_2d_index(self);
+        let index = (index.0 + 1, index.1);
+        let v = self.get(index);
+        v.map(|x| (index.to_flat_index(self), x))
+    }
+    pub fn get_west(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+        let index = index.to_2d_index(self);
+        index.1.checked_sub(1).map(|x| {
+            (
+                (index.0, x).to_flat_index(self),
+                self.get((index.0, x).to_flat_index(self)).unwrap(),
+            )
+        })
+    }
+    pub fn get_east(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
+        let index = index.to_2d_index(self);
+        let index = (index.0, index.1 + 1);
+        let v = self.get(index);
+        v.map(|x| (index.to_flat_index(self), x))
+    }
     pub fn height(&self) -> usize {
         self.rows
     }
@@ -183,5 +225,26 @@ where
                 output
             });
         write!(f, "{s}")
+    }
+}
+impl<T> IntoIterator for Grid<T> {
+    type Item = T;
+
+    type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
+    }
+}
+impl<T> Deref for Grid<T> {
+    type Target = [T];
+
+    fn deref(&self) -> &Self::Target {
+        &self.data[..]
+    }
+}
+impl<T> DerefMut for Grid<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data[..]
     }
 }
