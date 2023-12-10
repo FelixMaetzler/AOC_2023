@@ -1,5 +1,3 @@
-use std::collections::{HashMap, VecDeque};
-
 use advent_of_code::{Grid, OwnIndex};
 
 advent_of_code::solution!(10);
@@ -45,27 +43,24 @@ pub fn part_one(input: &str) -> Option<u32> {
         .find(|(_, e)| e == &&Tile::Start)
         .unwrap()
         .0;
-    let map = grid
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| t != &&Tile::Ground)
-        .map(|(i, _)| (i, get_neighbours(i, &grid)))
-        .collect::<HashMap<_, _>>();
-    let mut dist = HashMap::new();
-    dist.insert(start, 0);
-    let mut queue = VecDeque::new();
-    queue.push_back(start);
-    while let Some(node) = queue.pop_front() {
-        let d = *dist.get(&node).unwrap();
-        for n in map.get(&node).unwrap() {
-            let n = n.to_flat_index(&grid);
-            dist.entry(n).or_insert_with(|| {
-                queue.push_back(n);
-                d + 1
-            });
+    let mut curr = start;
+    let mut prev = start;
+
+    let mut ctr = 0;
+    loop {
+        let n = get_neighbours(curr, &grid);
+        let next = n
+            .iter()
+            .find(|c| c.to_flat_index(&grid) != prev)
+            .unwrap()
+            .to_flat_index(&grid);
+        ctr += 1;
+        if next == start {
+            return Some(ctr / 2);
         }
+        prev = curr;
+        curr = next;
     }
-    Some(*dist.values().max().unwrap())
 }
 fn get_neighbours(index: impl OwnIndex<Tile>, grid: &Grid<Tile>) -> Vec<impl OwnIndex<Tile>> {
     use Dir::*;
@@ -92,7 +87,7 @@ fn get_neighbour(
     match dir {
         Dir::North => {
             if let Some((idx, tile)) = grid.get_north(index) {
-                if matches!(tile, SouthEast | SouthWest | NortSouth) {
+                if matches!(tile, SouthEast | SouthWest | NortSouth | Start) {
                     Some(idx.to_flat_index(grid))
                 } else {
                     None
@@ -103,7 +98,7 @@ fn get_neighbour(
         }
         Dir::South => {
             if let Some((idx, tile)) = grid.get_south(index) {
-                if matches!(tile, NortSouth | NorthEast | NorthWest) {
+                if matches!(tile, NortSouth | NorthEast | NorthWest | Start) {
                     Some(idx.to_flat_index(grid))
                 } else {
                     None
@@ -114,7 +109,7 @@ fn get_neighbour(
         }
         Dir::West => {
             if let Some((idx, tile)) = grid.get_west(index) {
-                if matches!(tile, EastWest | NorthEast | SouthEast) {
+                if matches!(tile, EastWest | NorthEast | SouthEast | Start) {
                     Some(idx.to_flat_index(grid))
                 } else {
                     None
@@ -125,7 +120,7 @@ fn get_neighbour(
         }
         Dir::East => {
             if let Some((idx, tile)) = grid.get_east(index) {
-                if matches!(tile, EastWest | NorthWest | SouthWest) {
+                if matches!(tile, EastWest | NorthWest | SouthWest | Start) {
                     Some(idx.to_flat_index(grid))
                 } else {
                     None
@@ -136,6 +131,7 @@ fn get_neighbour(
         }
     }
 }
+
 pub fn part_two(input: &str) -> Option<u32> {
     None
 }

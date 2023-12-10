@@ -163,33 +163,39 @@ impl<T> Grid<T> {
     }
     pub fn get_north(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
         let index = index.to_2d_index(self);
-        index.0.checked_sub(1).map(|y| {
-            (
-                (y, index.1).to_flat_index(self),
-                self.get((y, index.1).to_flat_index(self)).unwrap(),
-            )
-        })
+        if index.0 == 0 {
+            None
+        } else {
+            let index = (index.0 - 1, index.1);
+            Some((index, self.get(index).unwrap()))
+        }
     }
     pub fn get_south(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
         let index = index.to_2d_index(self);
         let index = (index.0 + 1, index.1);
-        let v = self.get(index);
-        v.map(|x| (index.to_flat_index(self), x))
+        if index.0 >= self.height() {
+            None
+        } else {
+            Some((index, self.get(index).unwrap()))
+        }
     }
     pub fn get_west(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
         let index = index.to_2d_index(self);
-        index.1.checked_sub(1).map(|x| {
-            (
-                (index.0, x).to_flat_index(self),
-                self.get((index.0, x).to_flat_index(self)).unwrap(),
-            )
-        })
+        if index.1 == 0 {
+            None
+        } else {
+            let index = (index.0, index.1 - 1);
+            Some((index, self.get(index).unwrap()))
+        }
     }
     pub fn get_east(&self, index: impl OwnIndex<T>) -> Option<(impl OwnIndex<T>, &T)> {
         let index = index.to_2d_index(self);
         let index = (index.0, index.1 + 1);
-        let v = self.get(index);
-        v.map(|x| (index.to_flat_index(self), x))
+        if index.1 >= self.width() {
+            None
+        } else {
+            Some((index, self.get(index).unwrap()))
+        }
     }
     pub fn height(&self) -> usize {
         self.rows
