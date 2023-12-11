@@ -202,6 +202,45 @@ impl<T> Grid<T> {
     pub fn width(&self) -> usize {
         self.cols
     }
+    pub fn insert_row(&mut self, row: usize, it: &[T])
+    where
+        T: PartialEq + Debug + Copy,
+    {
+        debug_assert_eq!(it.len(), self.width());
+        let i = (row, 0).to_flat_index(self);
+        it.iter().for_each(|e| self.data.insert(i, *e));
+        self.rows += 1;
+    }
+    pub fn insert_col(&mut self, col: usize, it: &[T])
+    where
+        T: PartialEq + Debug + Copy,
+    {
+        debug_assert_eq!(it.len(), self.height());
+        (0..self.height()).rev().for_each(|y| {
+            self.data
+                .insert((y, col).to_flat_index(self), *it.get(y).unwrap())
+        });
+
+        self.cols += 1;
+    }
+    pub fn get_col(&self, col: usize) -> Vec<T>
+    where
+        T: Clone,
+    {
+        (0..self.height())
+            .map(|y| self.get((y, col)).unwrap())
+            .cloned()
+            .collect::<Vec<_>>()
+    }
+    pub fn get_row(&self, row: usize) -> Vec<T>
+    where
+        T: Clone,
+    {
+        (0..self.width())
+            .map(|x| self.get((row, x)).unwrap())
+            .cloned()
+            .collect::<Vec<_>>()
+    }
 }
 impl<T> Index<(usize, usize)> for Grid<T> {
     type Output = T;
