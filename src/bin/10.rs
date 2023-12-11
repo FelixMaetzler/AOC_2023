@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashSet, VecDeque},
-    fmt::Debug,
-};
+use std::{collections::HashSet, fmt::Debug};
 
 use advent_of_code::{Grid, OwnIndex};
 
@@ -16,6 +13,20 @@ enum Tile {
     SouthEast,
     Ground,
     Start,
+}
+impl Debug for Tile {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NorthSouth => write!(f, "|"),
+            Self::EastWest => write!(f, "-"),
+            Self::NorthEast => write!(f, "⌞"),
+            Self::NorthWest => write!(f, "⌟"),
+            Self::SouthWest => write!(f, "⌝"),
+            Self::SouthEast => write!(f, "⌜"),
+            Self::Ground => write!(f, "."),
+            Self::Start => write!(f, "S"),
+        }
+    }
 }
 #[derive(Debug, Clone, Copy)]
 enum Dir {
@@ -123,154 +134,91 @@ fn start(grid: &Grid<Tile>) -> ((usize, usize), Dir) {
     };
     (start.to_2d_index(grid), dir)
 }
-pub fn part_two(input: &str) -> Option<usize> {
-    let mut grid = get_grid(input);
-    let mut undefined = grid
+fn get_start_tile(grid: &Grid<Tile>) -> Tile {
+    use Tile::*;
+    let mut vec = vec![];
+    let start = grid
         .iter()
         .enumerate()
-        .filter(|(_, s)| s == &&State::Undefined)
-        .map(|(i, _)| i)
-        .collect::<VecDeque<_>>();
+        .find(|(_, t)| t == &&Start)
+        .unwrap()
+        .0;
+    if grid
+        .get_north(start)
+        .is_some_and(|(_, t)| matches!(t, SouthEast | SouthWest | NorthSouth))
+    {
+        vec.push(Dir::North);
+    };
+    if grid
+        .get_south(start)
+        .is_some_and(|(_, t)| matches!(t, NorthEast | NorthWest | NorthSouth))
+    {
+        vec.push(Dir::South);
+    };
+    if grid
+        .get_west(start)
+        .is_some_and(|(_, t)| matches!(t, NorthEast | EastWest | SouthEast))
+    {
+        vec.push(Dir::West);
+    };
+    if grid
+        .get_east(start)
+        .is_some_and(|(_, t)| matches!(t, EastWest | NorthWest | SouthWest))
+    {
+        vec.push(Dir::East);
+    };
+    assert_eq!(vec.len(), 2);
+    match (vec[0], vec[1]) {
+        (Dir::North, Dir::South) => Tile::NorthSouth,
+        (Dir::North, Dir::West) => Tile::NorthWest,
+        (Dir::North, Dir::East) => Tile::NorthEast,
 
-    while let Some(u) = undefined.pop_front() {
-        let neigbour = grid.neighbours4(u);
+        (Dir::South, Dir::West) => Tile::SouthWest,
+        (Dir::South, Dir::East) => Tile::SouthEast,
 
-        if neigbour.contains(&State::Left) {
-            grid[u] = State::Left;
-        } else if neigbour.contains(&State::Right) {
-            grid[u] = State::Right;
-        } else {
-            undefined.push_back(u);
-        }
-    }
+        (Dir::West, Dir::East) => Tile::EastWest,
 
-    let left_count = Some(
-        grid.iter()
-            .filter(|s| matches!(s, State::Left | State::Undefined))
-            .count(),
-    );
-    let right_count = Some(
-        grid.iter()
-            .filter(|s| matches!(s, State::Right | State::Undefined))
-            .count(),
-    );
-    if (0..grid.width()).any(|x| grid.get((0, x)).unwrap() == &State::Left) {
-        return right_count;
-    }
-    if (0..grid.width()).any(|x| grid.get((0, x)).unwrap() == &State::Right) {
-        return left_count;
-    }
-    if (0..grid.width()).any(|x| grid.get((grid.height() - 1, x)).unwrap() == &State::Left) {
-        return right_count;
-    }
-    if (0..grid.width()).any(|x| grid.get((grid.height() - 1, x)).unwrap() == &State::Right) {
-        return left_count;
-    }
-    //-------
-    if (0..grid.height()).any(|y| grid.get((y, 0)).unwrap() == &State::Left) {
-        return right_count;
-    }
-    if (0..grid.height()).any(|y| grid.get((y, 0)).unwrap() == &State::Right) {
-        return left_count;
-    }
-    if (0..grid.height()).any(|y| grid.get((y, grid.width() - 1)).unwrap() == &State::Left) {
-        return right_count;
-    }
-    if (0..grid.height()).any(|y| grid.get((y, grid.width() - 1)).unwrap() == &State::Right) {
-        return left_count;
-    }
-    None
-}
-#[derive(PartialEq, Clone, Copy)]
-enum State {
-    Loop,
-    Undefined,
-    Left,
-    Right,
-}
-impl Debug for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Loop => write!(f, "#"),
-            Self::Undefined => write!(f, "?"),
-            Self::Left => write!(f, "L"),
-            Self::Right => write!(f, "R"),
-        }
+        _ => unreachable!(),
     }
 }
-fn get_grid(input: &str) -> Grid<State> {
-    let grid = parse(input);
+pub fn part_two(input: &str) -> Option<usize> {
+    let mut grid = parse(input);
     let (start, mut dir) = start(&grid);
+    grid[start] = get_start_tile(&grid);
+    let grid = grid;
     let mut curr = start;
     let mut lop = HashSet::new();
-    let mut dirs = vec![];
-
     loop {
         dir.step(&mut curr);
-        lop.insert(curr);
-        dirs.push(dir);
+        lop.insert(curr.to_flat_index(&grid));
         if curr == start {
             break;
         }
         let t = grid[curr];
         dir.turn(&t);
     }
-    let mut grid = Grid::from_iter(
-        grid.iter().enumerate().map(|(i, _)| {
-            if lop.contains(&i.to_2d_index(&grid)) {
-                State::Loop
-            } else {
-                State::Undefined
-            }
-        }),
-        grid.width(),
+    let width = grid.width();
+    let grid = Grid::from_iter(
+        grid.into_iter()
+            .enumerate()
+            .map(|(i, t)| if lop.contains(&i) { t } else { Tile::Ground }),
+        width,
     );
+    let mut sum = 0;
 
-    let mut curr = start;
-    for dir in dirs {
-        let (left, right) = match dir {
-            Dir::North => (grid.get_west(curr), grid.get_east(curr)),
-            Dir::South => (grid.get_east(curr), grid.get_west(curr)),
-            Dir::West => (grid.get_south(curr), grid.get_north(curr)),
-            Dir::East => (grid.get_north(curr), grid.get_south(curr)),
-        };
-
-        let left = left.map(|(index, s)| (index, *s));
-        let right = right.map(|(index, s)| (index, *s));
-        if let Some((index, s)) = left {
-            if s == State::Undefined {
-                grid[index] = State::Left;
-            }
-        }
-        if let Some((index, s)) = right {
-            if s == State::Undefined {
-                grid[index] = State::Right;
-            }
-        }
-        dir.step(&mut curr);
-        let (left, right) = match dir {
-            Dir::North => (grid.get_west(curr), grid.get_east(curr)),
-            Dir::South => (grid.get_east(curr), grid.get_west(curr)),
-            Dir::West => (grid.get_south(curr), grid.get_north(curr)),
-            Dir::East => (grid.get_north(curr), grid.get_south(curr)),
-        };
-
-        let left = left.map(|(index, s)| (index, *s));
-        let right = right.map(|(index, s)| (index, *s));
-        if let Some((index, s)) = left {
-            if s == State::Undefined {
-                grid[index] = State::Left;
-            }
-        }
-        if let Some((index, s)) = right {
-            if s == State::Undefined {
-                grid[index] = State::Right;
+    for row in (0..grid.height()).map(|n| grid.get_row(n)) {
+        let mut inside = false;
+        for t in &row {
+            if t == &Tile::Ground {
+                sum += inside as usize;
+            } else if matches!(t, Tile::NorthSouth | Tile::NorthEast | Tile::NorthWest) {
+                inside = !inside;
             }
         }
     }
-
-    grid
+    Some(sum)
 }
+
 fn parse(input: &str) -> Grid<Tile> {
     Grid::from_iter_iter(
         input
