@@ -30,7 +30,7 @@ impl<T> OwnIndex<T> for (usize, usize) {
         *self
     }
 }
-
+#[derive(Clone)]
 pub struct Grid<T> {
     data: Vec<T>,
     rows: usize,
