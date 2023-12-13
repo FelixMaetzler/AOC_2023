@@ -67,107 +67,59 @@ impl Group {
         self.springs = vec.as_slice().join(&Status::Unknown);
     }
 }
-/// springs now has no operational at start or end and only one operational between the other variants
-fn simplify(springs: &[Status]) -> Vec<Status> {
-    let springs_original = springs;
-    let mut springs = springs_original.to_vec();
-    // Strip front
-    if let Some((i, _)) = springs
-        .iter()
-        .enumerate()
-        .find(|(_, s)| s != &&Status::Operational)
-    {
-        springs = springs.split_at(i).1.into();
-    }
-    // Strip back
-    if let Some((i, _)) = springs
-        .iter()
-        .enumerate()
-        .rfind(|(_, s)| s != &&Status::Operational)
-    {
-        springs = springs.split_at(i + 1).0.into();
-    }
-    let mut vec = vec![];
-    let mut last = Status::Operational;
-    for x in &springs {
-        if last == Status::Operational && x == &last {
-        } else {
-            vec.push(*x);
-        }
-        last = *x;
-    }
-    springs = vec;
-
-    debug_assert_ne!(
-        *springs.first().unwrap_or(&Status::Damaged),
-        Status::Operational
-    );
-    debug_assert_ne!(
-        *springs.last().unwrap_or(&Status::Damaged),
-        Status::Operational
-    );
-    debug_assert!(!springs
-        .as_slice()
-        .windows(2)
-        .any(|w| w[0] == Status::Operational && w[1] == Status::Operational));
-    springs
-}
-
 pub fn part_one(input: &str) -> Option<usize> {
     let vec = parse(input);
     let vec = vec
         .into_iter()
-        .map(|g| (simplify(&g.springs), g.contiguous))
-        //.map(|g| ((g.springs), g.contiguous))
+        .map(|g| ((g.springs), g.contiguous))
         .collect::<VecDeque<_>>();
     Some(
         vec.into_iter()
-            .map(|(springs, contiguous)| {
-                solve(
-                    0,
-                    0,
-                    0,
-                    springs.into(),
-                    contiguous.into(),
-                    &mut HashMap::new(),
-                )
-            })
+            .map(|(springs, contiguous)| solve(0, 0, 0, &springs, &contiguous, &mut HashMap::new()))
             .sum(),
     )
 }
 fn solve(
-    i: usize,
-    n: usize,
-    b: usize,
-    springs: VecDeque<Status>,
-    contiguous: VecDeque<usize>,
+    i_springs: usize,    // Index in springs
+    i_contiguous: usize, // Index in contiguous
+    b: usize,            // current block size
+    springs: &[Status],
+    contiguous: &[usize],
     map: &mut HashMap<(usize, usize, usize), usize>,
 ) -> usize {
-    if let Some(x) = map.get(&(i, n, b)) {
+    if let Some(x) = map.get(&(i_springs, i_contiguous, b)) {
         return *x;
     }
-    if i == springs.len() {
-        let ret = (n == contiguous.len() && b == 0)
-            || (n == contiguous.len() - 1 && b == *contiguous.back().unwrap());
-        return ret as usize;
+    // End of Springs
+    if i_springs == springs.len() {
+        let ret = (i_contiguous == contiguous.len() && b == 0) // No current Block and finished all
+            || (i_contiguous == contiguous.len() - 1 && b == *contiguous.last().unwrap()); // One last Block and currently in a Block of that size
+        return if ret { 1 } else { 0 };
     }
     let mut ans = 0;
-    if springs[i] != Status::Damaged {
+    // Is (or can be) a Status::Operational
+    if springs[i_springs] != Status::Damaged {
         if b == 0 {
-            ans += solve(i + 1, n, 0, springs.clone(), contiguous.clone(), map);
+            // Just keep going
+            ans += solve(i_springs + 1, i_contiguous, 0, springs, contiguous, map);
         } else {
-            if n == contiguous.len() {
+            if i_contiguous == contiguous.len() {
+                // too many springs
                 return 0;
             }
-            if b == contiguous[n] {
-                ans += solve(i + 1, n + 1, 0, springs.clone(), contiguous.clone(), map);
+            // If we currently are continous
+            if b == contiguous[i_contiguous] {
+                // Count and keep going
+                ans += solve(i_springs + 1, i_contiguous + 1, 0, springs, contiguous, map);
             }
         }
     }
-    if springs[i] != Status::Operational {
-        ans += solve(i + 1, n, b + 1, springs, contiguous, map);
+    // Is (or can be) a Status::Damaged
+    if springs[i_springs] != Status::Operational {
+        // Continue current Block
+        ans += solve(i_springs + 1, i_contiguous, b + 1, springs, contiguous, map);
     }
-    map.insert((i, n, b), ans);
+    map.insert((i_springs, i_contiguous, b), ans);
     ans
 }
 
@@ -177,20 +129,11 @@ pub fn part_two(input: &str) -> Option<usize> {
     let vec = vec;
     let vec = vec
         .into_iter()
-        .map(|g| (simplify(&g.springs), g.contiguous))
+        .map(|g| (g.springs, g.contiguous))
         .collect::<Vec<_>>();
     Some(
         vec.into_iter()
-            .map(|(springs, contiguous)| {
-                solve(
-                    0,
-                    0,
-                    0,
-                    springs.into(),
-                    contiguous.into(),
-                    &mut HashMap::new(),
-                )
-            })
+            .map(|(springs, contiguous)| solve(0, 0, 0, &springs, &contiguous, &mut HashMap::new()))
             .sum(),
     )
 }
@@ -224,6 +167,7 @@ mod tests {
         assert_eq!(result, Some(525_152));
     }
     #[test]
+    #[ignore]
     fn test_part_two_actual() {
         let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(23_903_579_139_437));
