@@ -1,11 +1,23 @@
-use std::str::FromStr;
+use std::{
+    collections::{HashMap, VecDeque},
+    str::FromStr,
+};
 
 advent_of_code::solution!(12);
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Eq, Hash)]
 enum Status {
     Operational,
     Damaged,
     Unknown,
+}
+impl std::fmt::Debug for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Operational => write!(f, "."),
+            Self::Damaged => write!(f, "#"),
+            Self::Unknown => write!(f, "?"),
+        }
+    }
 }
 impl TryFrom<char> for Status {
     type Error = char;
@@ -21,7 +33,7 @@ impl TryFrom<char> for Status {
 }
 struct Group {
     springs: Vec<Status>,
-    contiguous: Vec<u32>,
+    contiguous: Vec<usize>,
 }
 impl FromStr for Group {
     type Err = ();
@@ -39,7 +51,22 @@ impl FromStr for Group {
         })
     }
 }
-
+impl Group {
+    fn quintuple(&mut self) {
+        let len = self.contiguous.len();
+        self.contiguous = self
+            .contiguous
+            .iter()
+            .cloned()
+            .cycle()
+            .take(5 * len)
+            .collect();
+        let vec = vec![self.springs.clone(); 5]
+            .into_iter()
+            .collect::<Vec<_>>();
+        self.springs = vec.as_slice().join(&Status::Unknown);
+    }
+}
 /// springs now has no operational at start or end and only one operational between the other variants
 fn simplify(springs: &[Status]) -> Vec<Status> {
     let springs_original = springs;
@@ -85,72 +112,87 @@ fn simplify(springs: &[Status]) -> Vec<Status> {
         .any(|w| w[0] == Status::Operational && w[1] == Status::Operational));
     springs
 }
-fn is_correct(springs: &[Status], contiguous: &[u32]) -> bool {
-    springs == contiguous_to_springs(contiguous)
-}
-fn contiguous_to_springs(contiguous: &[u32]) -> Vec<Status> {
-    let vec: Vec<Vec<_>> = contiguous
-        .iter()
-        .map(|n| {
-            std::iter::repeat(Status::Damaged)
-                .take(*n as usize)
-                .collect()
-        })
-        .collect();
-    vec.join(&Status::Operational)
-}
-pub fn part_one(input: &str) -> Option<u32> {
+
+pub fn part_one(input: &str) -> Option<usize> {
     let vec = parse(input);
+    let vec = vec
+        .into_iter()
+        .map(|g| (simplify(&g.springs), g.contiguous))
+        //.map(|g| ((g.springs), g.contiguous))
+        .collect::<VecDeque<_>>();
+    Some(
+        vec.into_iter()
+            .map(|(springs, contiguous)| {
+                solve(
+                    0,
+                    0,
+                    0,
+                    springs.into(),
+                    contiguous.into(),
+                    &mut HashMap::new(),
+                )
+            })
+            .sum(),
+    )
+}
+fn solve(
+    i: usize,
+    n: usize,
+    b: usize,
+    springs: VecDeque<Status>,
+    contiguous: VecDeque<usize>,
+    map: &mut HashMap<(usize, usize, usize), usize>,
+) -> usize {
+    if let Some(x) = map.get(&(i, n, b)) {
+        return *x;
+    }
+    if i == springs.len() {
+        let ret = (n == contiguous.len() && b == 0)
+            || (n == contiguous.len() - 1 && b == *contiguous.back().unwrap());
+        return ret as usize;
+    }
+    let mut ans = 0;
+    if springs[i] != Status::Damaged {
+        if b == 0 {
+            ans += solve(i + 1, n, 0, springs.clone(), contiguous.clone(), map);
+        } else {
+            if n == contiguous.len() {
+                return 0;
+            }
+            if b == contiguous[n] {
+                ans += solve(i + 1, n + 1, 0, springs.clone(), contiguous.clone(), map);
+            }
+        }
+    }
+    if springs[i] != Status::Operational {
+        ans += solve(i + 1, n, b + 1, springs, contiguous, map);
+    }
+    map.insert((i, n, b), ans);
+    ans
+}
+
+pub fn part_two(input: &str) -> Option<usize> {
+    let mut vec = parse(input);
+    vec.iter_mut().for_each(|g| g.quintuple());
+    let vec = vec;
     let vec = vec
         .into_iter()
         .map(|g| (simplify(&g.springs), g.contiguous))
         .collect::<Vec<_>>();
     Some(
         vec.into_iter()
-            .map(|(springs, contiguous)| solve(&springs, &contiguous))
+            .map(|(springs, contiguous)| {
+                solve(
+                    0,
+                    0,
+                    0,
+                    springs.into(),
+                    contiguous.into(),
+                    &mut HashMap::new(),
+                )
+            })
             .sum(),
     )
-}
-fn solve(springs: &[Status], contiguous: &[u32]) -> u32 {
-    let unknown = springs
-        .iter()
-        .enumerate()
-        .filter(|(_, s)| s == &&Status::Unknown)
-        .map(|(i, _)| i)
-        .collect::<Vec<_>>();
-    let mut count = 0;
-    for i in 0..(1 << unknown.len()) {
-        let replace = unsigned_to_status(i, unknown.len());
-        let mut new = vec![];
-        (0..springs.len()).for_each(|j| {
-            if let Ok(x) = unknown.binary_search(&j) {
-                new.push(replace[x]);
-            } else {
-                new.push(springs[j]);
-            }
-        });
-        new = simplify(&new);
-        if is_correct(&new, contiguous) {
-            count += 1;
-        }
-    }
-    count
-}
-fn unsigned_to_status(x: u128, len: usize) -> Vec<Status> {
-    let mut vec = vec![];
-    let mut x = x;
-    for _ in 0..len {
-        match x % 2 {
-            0 => vec.push(Status::Operational),
-            1 => vec.push(Status::Damaged),
-            _ => unreachable!(),
-        }
-        x >>= 1
-    }
-    vec
-}
-pub fn part_two(input: &str) -> Option<u32> {
-    None
 }
 fn parse(input: &str) -> Vec<Group> {
     input
@@ -169,6 +211,7 @@ mod tests {
         let result = part_one(&advent_of_code::template::read_file("examples", DAY));
         assert_eq!(result, Some(21));
     }
+
     #[test]
     fn test_part_one_actual() {
         let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
@@ -178,6 +221,81 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(525_152));
+    }
+    #[test]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(23_903_579_139_437));
+    }
+
+    #[test]
+    fn test_part_one_1() {
+        assert_eq!(part_one("???.### 1,1,3"), Some(1));
+    }
+    #[test]
+    fn test_part_one_2() {
+        assert_eq!(part_one(".??..??...?##. 1,1,3"), Some(4));
+    }
+    #[test]
+    fn test_part_one_3() {
+        assert_eq!(part_one("?#?#?#?#?#?#?#? 1,3,1,6"), Some(1));
+    }
+    #[test]
+    fn test_part_one_4() {
+        assert_eq!(part_one("????.#...#... 4,1,1"), Some(1));
+    }
+    #[test]
+    fn test_part_one_5() {
+        assert_eq!(part_one("????.######..#####. 1,6,5"), Some(4));
+    }
+
+    #[test]
+    fn test_part_one_6() {
+        assert_eq!(part_one("?###???????? 3,2,1"), Some(10));
+    }
+    #[test]
+    fn test_part_one_7() {
+        assert_eq!(part_one("?.?.?????.?# 1,1,3,1"), Some(5));
+    }
+    #[test]
+    fn test_part_one_8() {
+        assert_eq!(part_one("#.######.?# 1,6,1"), Some(1));
+    }
+    #[test]
+    fn test_part_one_9() {
+        assert_eq!(part_one("###.???# 3,2"), Some(1));
+    }
+    #[test]
+    fn test_part_one_10() {
+        assert_eq!(part_one("#.#????????? 1,5"), Some(1));
+    }
+
+    //-------------
+
+    #[test]
+    fn test_part_two_1() {
+        assert_eq!(part_two("???.### 1,1,3"), Some(1));
+    }
+    #[test]
+    fn test_part_two_2() {
+        assert_eq!(part_two(".??..??...?##. 1,1,3"), Some(16384));
+    }
+    #[test]
+    fn test_part_two_3() {
+        assert_eq!(part_two("?#?#?#?#?#?#?#? 1,3,1,6"), Some(1));
+    }
+    #[test]
+    fn test_part_two_4() {
+        assert_eq!(part_two("????.#...#... 4,1,1"), Some(16));
+    }
+    #[test]
+    fn test_part_two_5() {
+        assert_eq!(part_two("????.######..#####. 1,6,5"), Some(2500));
+    }
+
+    #[test]
+    fn test_part_two_6() {
+        assert_eq!(part_two("?###???????? 3,2,1"), Some(506250));
     }
 }
