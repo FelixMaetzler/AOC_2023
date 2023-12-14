@@ -30,7 +30,7 @@ impl<T> OwnIndex<T> for (usize, usize) {
         *self
     }
 }
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct Grid<T> {
     data: Vec<T>,
     rows: usize,
@@ -256,7 +256,7 @@ impl<T> Grid<T> {
     {
         assert!(y < self.height());
         for x in 0..self.width() {
-            self[(y, x)] = row[y];
+            self[(y, x)] = row[x];
         }
     }
 }
