@@ -32,9 +32,7 @@ advent_of_code::solution!(14);
 
 pub fn part_one(input: &str) -> Option<usize> {
     let mut grid = parse(input);
-    dbg!(&grid);
     tilt_north(&mut grid);
-    dbg!(&grid);
     Some(calculate_load(&grid))
 }
 fn tilt_north(grid: &mut Grid<Tile>) {
@@ -135,7 +133,6 @@ pub fn part_two(input: &str) -> Option<usize> {
     for i in 0..CYCLES {
         execute_one_cyle(&mut grid);
         if let Some(prev) = map.get(&grid) {
-            println!("prev: {prev}, i: {i}");
             start_cycle = Some(*prev);
             end_cycle = Some(i);
             break;
@@ -184,6 +181,6 @@ mod tests {
     #[test]
     fn test_part_two_actual() {
         let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
-        assert_eq!(result, Some(90176));
+        assert_eq!(result, Some(90_176));
     }
 }
