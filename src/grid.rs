@@ -232,6 +232,15 @@ impl<T> Grid<T> {
             .cloned()
             .collect::<Vec<_>>()
     }
+    pub fn set_col(&mut self, x: usize, col: &[T])
+    where
+        T: Copy,
+    {
+        assert!(x < self.width());
+        for y in 0..self.height() {
+            self[(y, x)] = col[y];
+        }
+    }
     pub fn get_row(&self, row: usize) -> Vec<T>
     where
         T: Clone,
@@ -240,6 +249,15 @@ impl<T> Grid<T> {
             .map(|x| self.get((row, x)).unwrap())
             .cloned()
             .collect::<Vec<_>>()
+    }
+    pub fn set_row(&mut self, y: usize, row: &[T])
+    where
+        T: Copy,
+    {
+        assert!(y < self.height());
+        for x in 0..self.width() {
+            self[(y, x)] = row[y];
+        }
     }
 }
 impl<T> Index<(usize, usize)> for Grid<T> {
