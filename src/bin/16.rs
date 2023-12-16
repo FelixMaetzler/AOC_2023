@@ -1,6 +1,5 @@
-use std::collections::{HashSet, VecDeque};
-
 use advent_of_code::{Grid, OwnIndex};
+use std::collections::{HashSet, VecDeque};
 
 advent_of_code::solution!(16);
 enum Tile {
@@ -34,12 +33,10 @@ enum Dir {
 pub fn part_one(input: &str) -> Option<usize> {
     let grid = parse(input);
     let start = (0, Dir::East);
-    let mut queue = VecDeque::new();
-    queue.push_back(start);
-    solve(&grid, queue)
+    solve(&grid, start)
 }
-fn solve(grid: &Grid<Tile>, start: VecDeque<(usize, Dir)>) -> Option<usize> {
-    let mut queue = start;
+fn solve(grid: &Grid<Tile>, start: (usize, Dir)) -> Option<usize> {
+    let mut queue = VecDeque::from(vec![start]);
     let mut visited = HashSet::new();
     while let Some(curr) = queue.pop_front() {
         if visited.contains(&curr) {
@@ -78,8 +75,39 @@ fn solve(grid: &Grid<Tile>, start: VecDeque<(usize, Dir)>) -> Option<usize> {
     let visited = visited.into_iter().map(|(x, _)| x).collect::<HashSet<_>>();
     Some(visited.len())
 }
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let grid = parse(input);
+
+    let mut max = 0;
+    for y in 0..grid.height() {
+        let erg = solve(&grid, ((y, 0).to_flat_index(&grid), Dir::East)).unwrap();
+        if erg > max {
+            max = erg;
+        }
+        let erg = solve(
+            &grid,
+            ((y, grid.width() - 1).to_flat_index(&grid), Dir::West),
+        )
+        .unwrap();
+        if erg > max {
+            max = erg;
+        }
+    }
+    for x in 0..grid.width() {
+        let erg = solve(&grid, ((0, x).to_flat_index(&grid), Dir::South)).unwrap();
+        if erg > max {
+            max = erg;
+        }
+        let erg = solve(
+            &grid,
+            ((grid.height() - 1, x).to_flat_index(&grid), Dir::North),
+        )
+        .unwrap();
+        if erg > max {
+            max = erg;
+        }
+    }
+    Some(max)
 }
 fn parse(input: &str) -> Grid<Tile> {
     Grid::from_iter_iter(
@@ -103,10 +131,15 @@ mod tests {
         let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(7_067));
     }
-
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(51));
+    }
+    #[test]
+    #[ignore]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(7_324));
     }
 }
