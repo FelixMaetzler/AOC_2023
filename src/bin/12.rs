@@ -75,54 +75,62 @@ pub fn part_one(input: &str) -> Option<usize> {
         .collect::<VecDeque<_>>();
     Some(
         vec.into_iter()
-            .map(|(springs, contiguous)| solve(0, 0, 0, &springs, &contiguous, &mut HashMap::new()))
+            .map(|(springs, contiguous)| solve(&springs, &contiguous, &mut HashMap::new()))
             .sum(),
     )
 }
 fn solve(
-    i_springs: usize,    // Index in springs
-    i_contiguous: usize, // Index in contiguous
-    b: usize,            // current block size
     springs: &[Status],
     contiguous: &[usize],
-    map: &mut HashMap<(usize, usize, usize), usize>,
+    map: &mut HashMap<(usize, usize), usize>,
 ) -> usize {
-    if let Some(x) = map.get(&(i_springs, i_contiguous, b)) {
+    // Memoisation
+    if let Some(x) = map.get(&(springs.len(), contiguous.len())) {
         return *x;
     }
-    // End of Springs
-    if i_springs == springs.len() {
-        let ret = (i_contiguous == contiguous.len() && b == 0) // No current Block and finished all
-            || (i_contiguous == contiguous.len() - 1 && b == *contiguous.last().unwrap()); // One last Block and currently in a Block of that size
-        return if ret { 1 } else { 0 };
-    }
-    let mut ans = 0;
-    // Is (or can be) a Status::Operational
-    if springs[i_springs] != Status::Damaged {
-        if b == 0 {
-            // Just keep going
-            ans += solve(i_springs + 1, i_contiguous, 0, springs, contiguous, map);
+    // Base Cases
+    if contiguous.is_empty() {
+        return if springs.contains(&Status::Damaged) {
+            // if Damaged is left but there should be none
+            0
         } else {
-            if i_contiguous == contiguous.len() {
-                // too many springs
-                return 0;
-            }
-            // If we currently are continous
-            if b == contiguous[i_contiguous] {
-                // Count and keep going
-                ans += solve(i_springs + 1, i_contiguous + 1, 0, springs, contiguous, map);
-            }
+            // if Damaged is not there and there should be none
+            1
+        };
+    }
+    if springs.len() < contiguous.iter().sum::<usize>() + contiguous.len() - 1 {
+        // There are not enough springs left to match the contiguous
+        return 0;
+    }
+    let erg = match springs[0] {
+        Status::Operational => solve(&springs[1..], contiguous, map),
+        Status::Damaged => damaged(springs, contiguous, map),
+        Status::Unknown => {
+            damaged(springs, contiguous, map) + solve(&springs[1..], contiguous, map)
         }
-    }
-    // Is (or can be) a Status::Damaged
-    if springs[i_springs] != Status::Operational {
-        // Continue current Block
-        ans += solve(i_springs + 1, i_contiguous, b + 1, springs, contiguous, map);
-    }
-    map.insert((i_springs, i_contiguous, b), ans);
-    ans
+    };
+    map.insert((springs.len(), contiguous.len()), erg);
+    erg
 }
-
+fn damaged(
+    springs: &[Status],
+    contiguous: &[usize],
+    map: &mut HashMap<(usize, usize), usize>,
+) -> usize {
+    // not enougth springs left or not the required length of springs
+    if springs.len() < contiguous[0] || springs[0..contiguous[0]].contains(&Status::Operational) {
+        return 0;
+    }
+    // If there are exactly as many springs left as required
+    if springs.len() == contiguous[0] {
+        return if contiguous.len() == 1 { 1 } else { 0 };
+    }
+    // Check the element after the block
+    if springs[contiguous[0]] == Status::Damaged {
+        return 0;
+    }
+    solve(&springs[(contiguous[0] + 1)..], &contiguous[1..], map)
+}
 pub fn part_two(input: &str) -> Option<usize> {
     let mut vec = parse(input);
     vec.iter_mut().for_each(|g| g.quintuple());
@@ -133,7 +141,7 @@ pub fn part_two(input: &str) -> Option<usize> {
         .collect::<Vec<_>>();
     Some(
         vec.into_iter()
-            .map(|(springs, contiguous)| solve(0, 0, 0, &springs, &contiguous, &mut HashMap::new()))
+            .map(|(springs, contiguous)| solve(&springs, &contiguous, &mut HashMap::new()))
             .sum(),
     )
 }
@@ -167,7 +175,6 @@ mod tests {
         assert_eq!(result, Some(525_152));
     }
     #[test]
-    #[ignore]
     fn test_part_two_actual() {
         let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(23_903_579_139_437));
