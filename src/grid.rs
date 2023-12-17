@@ -89,6 +89,25 @@ impl<T> Grid<T> {
         }
         ret
     }
+    pub fn neighbours4_with_index(&self, index: impl OwnIndex<T>) -> Vec<(impl OwnIndex<T>, T)>
+    where
+        T: Clone,
+    {
+        let mut ret = vec![];
+        if let Some(x) = self.get_north(index) {
+            ret.push((x.0, x.1.clone()));
+        }
+        if let Some(x) = self.get_east(index) {
+            ret.push((x.0, x.1.clone()));
+        }
+        if let Some(x) = self.get_east(index) {
+            ret.push((x.0, x.1.clone()));
+        }
+        if let Some(x) = self.get_south(index) {
+            ret.push((x.0, x.1.clone()));
+        }
+        ret
+    }
     pub fn neighbours8(&self, index: impl OwnIndex<T>) -> Vec<T>
     where
         T: Clone,

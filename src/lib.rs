@@ -1,5 +1,5 @@
 mod day;
-mod grid;
+pub mod grid;
 pub use grid::Grid;
 pub use grid::OwnIndex;
 pub mod template;
