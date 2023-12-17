@@ -77,37 +77,23 @@ fn solve(grid: &Grid<Tile>, start: (usize, Dir)) -> Option<usize> {
 }
 pub fn part_two(input: &str) -> Option<usize> {
     let grid = parse(input);
-
-    let mut max = 0;
-    for y in 0..grid.height() {
-        let erg = solve(&grid, ((y, 0).to_flat_index(&grid), Dir::East)).unwrap();
-        if erg > max {
-            max = erg;
-        }
-        let erg = solve(
-            &grid,
-            ((y, grid.width() - 1).to_flat_index(&grid), Dir::West),
-        )
-        .unwrap();
-        if erg > max {
-            max = erg;
-        }
-    }
-    for x in 0..grid.width() {
-        let erg = solve(&grid, ((0, x).to_flat_index(&grid), Dir::South)).unwrap();
-        if erg > max {
-            max = erg;
-        }
-        let erg = solve(
-            &grid,
-            ((grid.height() - 1, x).to_flat_index(&grid), Dir::North),
-        )
-        .unwrap();
-        if erg > max {
-            max = erg;
-        }
-    }
-    Some(max)
+    (0..grid.height())
+        .flat_map(|y| {
+            vec![
+                ((y, 0).to_flat_index(&grid), Dir::East),
+                ((y, grid.width() - 1).to_flat_index(&grid), Dir::West),
+            ]
+        })
+        .chain((0..grid.width()).flat_map(|x| {
+            vec![
+                ((0, x).to_flat_index(&grid), Dir::South),
+                ((grid.height() - 1, x).to_flat_index(&grid), Dir::North),
+            ]
+        }))
+        // .par_bridge() // for rayon
+        .map(|s| solve(&grid, s))
+        .max()
+        .unwrap()
 }
 fn parse(input: &str) -> Grid<Tile> {
     Grid::from_iter_iter(

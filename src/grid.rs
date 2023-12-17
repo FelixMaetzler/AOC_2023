@@ -11,21 +11,23 @@ where
     fn to_2d_index(&self, grid: &Grid<T>) -> (usize, usize);
 }
 impl<T> OwnIndex<T> for usize {
+    #[inline(always)]
     fn to_flat_index(&self, _: &Grid<T>) -> usize {
         *self
     }
-
+    #[inline(always)]
     fn to_2d_index(&self, grid: &Grid<T>) -> (usize, usize) {
         (self / grid.cols, self % grid.cols)
     }
 }
 impl<T> OwnIndex<T> for (usize, usize) {
+    #[inline(always)]
     fn to_flat_index(&self, grid: &Grid<T>) -> usize {
         debug_assert!(self.0 < grid.height());
         debug_assert!(self.1 < grid.width());
         self.0 * grid.cols + self.1
     }
-
+    #[inline(always)]
     fn to_2d_index(&self, _: &Grid<T>) -> (usize, usize) {
         *self
     }
@@ -40,7 +42,7 @@ impl<T> Grid<T> {
     pub fn from_iter(it: impl Iterator<Item = T>, cols: usize) -> Self {
         let data: Vec<_> = it.collect();
         let rows = data.len() / cols;
-        assert_eq!(rows * cols, data.len());
+        debug_assert_eq!(rows * cols, data.len());
         Self { data, rows, cols }
     }
     pub fn from_iter_iter(it: impl Iterator<Item = impl Iterator<Item = T>>) -> Self {
@@ -55,7 +57,7 @@ impl<T> Grid<T> {
         }
         let cols = cols.expect("grid is not empty");
         let rows = data.len() / cols;
-        assert_eq!(rows * cols, data.len());
+        debug_assert_eq!(rows * cols, data.len());
         Self { data, rows, cols }
     }
     pub fn get(&self, index: impl OwnIndex<T>) -> Option<&T> {
@@ -196,9 +198,11 @@ impl<T> Grid<T> {
             Some((index.to_flat_index(self), self.get(index).unwrap()))
         }
     }
+    #[inline(always)]
     pub fn height(&self) -> usize {
         self.rows
     }
+    #[inline(always)]
     pub fn width(&self) -> usize {
         self.cols
     }
@@ -236,7 +240,7 @@ impl<T> Grid<T> {
     where
         T: Copy,
     {
-        assert!(x < self.width());
+        debug_assert!(x < self.width());
         for y in 0..self.height() {
             self[(y, x)] = col[y];
         }
@@ -254,7 +258,7 @@ impl<T> Grid<T> {
     where
         T: Copy,
     {
-        assert!(y < self.height());
+        debug_assert!(y < self.height());
         for x in 0..self.width() {
             self[(y, x)] = row[x];
         }
