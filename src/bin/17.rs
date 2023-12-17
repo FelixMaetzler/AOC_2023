@@ -1,19 +1,20 @@
 use std::{
-    collections::{HashMap, VecDeque},
+    cmp::Reverse,
+    collections::{BinaryHeap, HashMap, VecDeque},
     fmt::Debug,
 };
 
 use advent_of_code::Grid;
 
 advent_of_code::solution!(17);
-#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy, PartialOrd, Ord)]
 enum Dir {
     North,
     East,
     South,
     West,
 }
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, PartialOrd, Ord)]
 struct Node {
     index: usize,
     dir: Dir,
@@ -111,49 +112,22 @@ fn dijkstra(
     map: &HashMap<Node, Vec<Node>>,
     start: Vec<Node>,
 ) -> (HashMap<Node, u32>, HashMap<Node, Node>) {
-    /*
-     1  function Dijkstra(Graph, source):
-     2
-     3      for each vertex v in Graph.Vertices:
-     4          dist[v] ← INFINITY
-     5          prev[v] ← UNDEFINED
-     6          add v to Q
-     7      dist[source] ← 0
-     8
-     9      while Q is not empty:
-    10          u ← vertex in Q with min dist[u]
-    11          remove u from Q
-    12
-    13          for each neighbor v of u still in Q:
-    14              alt ← dist[u] + Graph.Edges(u, v)
-    15              if alt < dist[v]:
-    16                  dist[v] ← alt
-    17                  prev[v] ← u
-    18
-    19      return dist[], prev[]
-    */
     let mut dist: HashMap<Node, u32> = HashMap::new();
+    let mut queue = BinaryHeap::new();
     start.into_iter().for_each(|n| {
         dist.insert(n, 0);
+        queue.push((Reverse(0), n));
     });
     let mut prev: HashMap<Node, Node> = HashMap::new();
-    let mut queue = map.keys().cloned().collect::<Vec<_>>();
+
     while !queue.is_empty() {
-        let index_with_min = queue
-            .iter()
-            .enumerate()
-            .flat_map(|(i, node)| dist.get(node).map(|n| (*n, i)))
-            .min()
-            .unwrap_or_default()
-            .1;
-        let u = queue.swap_remove(index_with_min);
+        let (_, u) = queue.pop().unwrap();
+
         for v in map.get(&u).unwrap() {
-            if !queue.contains(v) {
-                continue;
-            }
             let alt = dist.get(&u).map(|n| (*n + v.value)).unwrap_or(u32::MAX);
             if alt < *dist.get(v).unwrap_or(&u32::MAX) {
                 dist.insert(*v, alt);
+                queue.push((Reverse(alt), *v));
                 prev.insert(*v, u);
             }
         }
@@ -182,7 +156,6 @@ mod tests {
         assert_eq!(result, Some(102));
     }
     #[test]
-    #[ignore]
     fn test_part_one_actual() {
         let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(907));
