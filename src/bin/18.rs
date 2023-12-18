@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::str::FromStr;
 
 advent_of_code::solution!(18);
 enum Dir {
@@ -7,19 +7,9 @@ enum Dir {
     Left,
     Right,
 }
-impl Dir {
-    fn step(&self, x: (i32, i32)) -> (i32, i32) {
-        match self {
-            Dir::Up => (x.0 + 1, x.1),
-            Dir::Down => (x.0 - 1, x.1),
-            Dir::Left => (x.0, x.1 - 1),
-            Dir::Right => (x.0, x.1 + 1),
-        }
-    }
-}
+
 impl FromStr for Dir {
     type Err = String;
-
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "U" => Ok(Self::Up),
@@ -32,74 +22,83 @@ impl FromStr for Dir {
 }
 struct Instruction {
     dir: Dir,
-    length: u32,
-    color_code: String,
+    length: u64,
 }
-impl FromStr for Instruction {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+impl Instruction {
+    fn part_1(s: &str) -> Instruction {
         let mut it = s.split_ascii_whitespace();
         let dir = Dir::from_str(it.next().unwrap()).unwrap();
         let length = it.next().unwrap().parse().unwrap();
-        Ok(Self {
-            dir,
-            length,
-            color_code: it.next().unwrap().to_string(),
-        })
+        Self { dir, length }
+    }
+    fn part_2(s: &str) -> Instruction {
+        let mut it = s.split_ascii_whitespace();
+
+        let (length, dir) = parse_hex(it.nth(2).unwrap());
+        Self { dir, length }
     }
 }
-pub fn part_one(input: &str) -> Option<usize> {
-    let vec = parse(input);
-    let mut map = HashSet::new();
+fn parse_hex(input: &str) -> (u64, Dir) {
+    let rem = input.trim_end_matches(')');
+    let rem = rem.trim_start_matches("(#");
+    debug_assert_eq!(rem.len(), 6);
+    let length = u64::from_str_radix(&rem[0..5], 16).unwrap();
+    let dir = match rem.chars().last().unwrap() {
+        '0' => Dir::Right,
+        '1' => Dir::Down,
+        '2' => Dir::Left,
+        '3' => Dir::Up,
+        _ => unreachable!(),
+    };
+    (length, dir)
+}
+pub fn part_one(input: &str) -> Option<u64> {
+    let vec = &parse_part_1(input);
+    solve(vec)
+}
+
+pub fn part_two(input: &str) -> Option<u64> {
+    let vec = &parse_part_2(input);
+    solve(vec)
+}
+fn solve(vec: &[Instruction]) -> Option<u64> {
+    // https://en.wikipedia.org/wiki/Pick%27s_theorem
+    let shoelance = shoelance(vec);
+    let perimeter = vec.iter().map(|i| i.length).sum::<u64>();
+    assert_eq!(perimeter % 2, 0);
+
+    Some(shoelance + perimeter / 2 + 1)
+}
+fn shoelance(vec: &[Instruction]) -> u64 {
+    // https://en.wikipedia.org/wiki/Shoelace_formula
     let mut curr = (0, 0);
-    map.insert(curr);
-    for instruction in &vec {
-        for _ in 0..instruction.length {
-            curr = instruction.dir.step(curr);
-            map.insert(curr);
-        }
+    let mut points = Vec::with_capacity(vec.len());
+    points.push(curr);
+    for ins in vec {
+        curr = match ins.dir {
+            Dir::Up => (curr.0 + ins.length as i64, curr.1),
+            Dir::Down => (curr.0 - ins.length as i64, curr.1),
+            Dir::Left => (curr.0, curr.1 - ins.length as i64),
+            Dir::Right => (curr.0, curr.1 + ins.length as i64),
+        };
+        points.push(curr);
     }
-    curr = (0, 0);
-    curr = vec[0].dir.step(curr);
-    curr = vec[1].dir.step(curr);
-    let inside = curr;
-    assert!(!map.contains(&inside));
-    flood_fill(&mut map, inside);
-    Some(map.len())
-}
-fn flood_fill(map: &mut HashSet<(i32, i32)>, node: (i32, i32)) {
-    let mut queue = Vec::new();
-    queue.push(node);
-    while let Some((y, x)) = queue.pop() {
-        map.insert((y, x));
-        let next = (y + 1, x);
-        if !map.contains(&next) {
-            queue.push(next);
-        }
-        let next = (y - 1, x);
-        if !map.contains(&next) {
-            queue.push(next);
-        }
-        let next = (y, x + 1);
-        if !map.contains(&next) {
-            queue.push(next);
-        }
-        let next = (y, x - 1);
-        if !map.contains(&next) {
-            queue.push(next);
-        }
+    let mut points = points.into_iter().rev().collect::<Vec<_>>();
+    let n = points.len();
+    points.push(points[0]);
+    let mut sum = 0;
+    for i in 0..n {
+        sum += (points[i].0 + points[i + 1].0) * (points[i].1 - points[i + 1].1);
     }
+    assert!(sum >= 0);
+    assert_eq!(sum % 2, 0);
+    sum as u64 / 2
 }
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+fn parse_part_1(input: &str) -> Vec<Instruction> {
+    input.trim().lines().map(Instruction::part_1).collect()
 }
-fn parse(input: &str) -> Vec<Instruction> {
-    input
-        .trim()
-        .lines()
-        .map(|l| Instruction::from_str(l).unwrap())
-        .collect()
+fn parse_part_2(input: &str) -> Vec<Instruction> {
+    input.trim().lines().map(Instruction::part_2).collect()
 }
 #[cfg(test)]
 mod tests {
@@ -119,6 +118,11 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(952_408_144_115));
+    }
+    #[test]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(78_242_031_808_225));
     }
 }
