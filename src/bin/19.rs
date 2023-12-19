@@ -192,11 +192,11 @@ impl Part1 {
         let w = map.get(&key).unwrap();
         for rule in &w.rules {
             if let Some(next) = rule.execute1(self) {
-                match next {
-                    Output::Reject => return Output::Reject,
-                    Output::Accept => return Output::Accept,
-                    Output::Workflow(x) => return self.recurse(map, x),
-                }
+                return match next {
+                    Output::Reject => Output::Reject,
+                    Output::Accept => Output::Accept,
+                    Output::Workflow(x) => self.recurse(map, x),
+                };
             }
         }
         unreachable!()
