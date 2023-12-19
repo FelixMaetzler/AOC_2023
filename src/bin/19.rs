@@ -1,4 +1,6 @@
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, ops::Range, str::FromStr};
+
+use advent_of_code::{Count, RangeExt};
 
 advent_of_code::solution!(19);
 #[derive(Eq, PartialEq, Clone)]
@@ -19,12 +21,12 @@ impl FromStr for Output {
     }
 }
 enum Rule {
-    Less(char, u32, Output),
-    Greater(char, u32, Output),
+    Less(char, u64, Output),
+    Greater(char, u64, Output),
     Default(Output),
 }
 impl Rule {
-    fn execute(&self, part: &Part) -> Option<Output> {
+    fn execute1(&self, part: &Part1) -> Option<Output> {
         match self {
             Rule::Less(c, n, o) => {
                 if part.data.get(c).unwrap() < n {
@@ -43,6 +45,30 @@ impl Rule {
             Rule::Default(o) => Some(o.clone()),
         }
     }
+    fn execute2(&self, part: &Part2) -> (Option<(Part2, Output)>, Option<Part2>) {
+        let (range, cmp, c, o) = match self {
+            Rule::Less(c, n, o) => {
+                let range = 1..*n;
+                let cmp = part.data.get(c).unwrap();
+                (range, cmp, c, o)
+            }
+            Rule::Greater(c, n, o) => {
+                let range = n + 1..4001;
+                let cmp = part.data.get(c).unwrap();
+                (range, cmp, c, o)
+            }
+            Rule::Default(o) => return (Some((part.clone(), o.clone())), None),
+        };
+        let intersection = cmp.get_intersection(&range); // Has to go to next key
+        let non_intersection = cmp.get_non_intersection(&range); // Has to go to next rule
+        let ret1 = intersection.map(|r| (part.new_with(*c, r), o.clone()));
+        let ret2 = match non_intersection {
+            Count::None => None,
+            Count::Single(r) => Some(part.new_with(*c, r)),
+            Count::Double(_, _) => unreachable!(),
+        };
+        (ret1, ret2)
+    }
 }
 impl FromStr for Rule {
     type Err = String;
@@ -54,7 +80,7 @@ impl FromStr for Rule {
         if s.contains('<') {
             let (c, rem) = s.split_once('<').unwrap();
             let (n, output) = rem.split_once(':').unwrap();
-            assert_eq!(c.len(), 1);
+            debug_assert_eq!(c.len(), 1);
             let c = c.chars().next().unwrap();
             let n = n.parse().unwrap();
             let output = Output::from_str(output).unwrap();
@@ -63,7 +89,7 @@ impl FromStr for Rule {
         if s.contains('>') {
             let (c, rem) = s.split_once('>').unwrap();
             let (n, output) = rem.split_once(':').unwrap();
-            assert_eq!(c.len(), 1);
+            debug_assert_eq!(c.len(), 1);
             let c = c.chars().next().unwrap();
             let n = n.parse().unwrap();
             let output = Output::from_str(output).unwrap();
@@ -87,10 +113,56 @@ impl FromStr for Workflow {
         Ok(Self { name, rules })
     }
 }
-struct Part {
-    data: HashMap<char, u32>,
+struct Part1 {
+    data: HashMap<char, u64>,
 }
-impl FromStr for Part {
+#[derive(Clone)]
+struct Part2 {
+    data: HashMap<char, Range<u64>>,
+}
+
+impl Part2 {
+    fn new() -> Self {
+        let mut data = HashMap::new();
+        data.insert('x', 1..4001);
+        data.insert('m', 1..4001);
+        data.insert('a', 1..4001);
+        data.insert('s', 1..4001);
+        Self { data }
+    }
+    fn new_with(&self, c: char, r: Range<u64>) -> Self {
+        let mut n = self.clone();
+        n.data.insert(c, r);
+        n
+    }
+    fn comb(&self) -> usize {
+        self.data.values().map(|r| r.clone().count()).product()
+    }
+    fn recurse(&self, map: &HashMap<String, Workflow>, key: String) -> usize {
+        let workflow = map.get(&key).unwrap();
+        let mut curr = vec![self.clone()];
+        let mut sum = 0;
+        for rule in &workflow.rules {
+            let mut next = vec![];
+            for part in &curr {
+                let (n, push) = rule.execute2(part);
+                if let Some((p, o)) = n {
+                    match o {
+                        Output::Reject => sum += 0,
+                        Output::Accept => sum += p.comb(),
+                        Output::Workflow(o) => sum += p.recurse(map, o),
+                    }
+                }
+                if let Some(x) = push {
+                    next.push(x);
+                }
+            }
+            curr = next;
+        }
+        sum
+    }
+}
+impl FromStr for Part1 {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -105,8 +177,8 @@ impl FromStr for Part {
         })
     }
 }
-impl Part {
-    fn rating_number(&self) -> u32 {
+impl Part1 {
+    fn rating_number(&self) -> u64 {
         self.data.values().sum()
     }
     fn is_accepted(&self, map: &HashMap<String, Workflow>) -> bool {
@@ -119,7 +191,7 @@ impl Part {
     fn recurse(&self, map: &HashMap<String, Workflow>, key: String) -> Output {
         let w = map.get(&key).unwrap();
         for rule in &w.rules {
-            if let Some(next) = rule.execute(self) {
+            if let Some(next) = rule.execute1(self) {
                 match next {
                     Output::Reject => return Output::Reject,
                     Output::Accept => return Output::Accept,
@@ -130,7 +202,7 @@ impl Part {
         unreachable!()
     }
 }
-pub fn part_one(input: &str) -> Option<u32> {
+pub fn part_one(input: &str) -> Option<u64> {
     let (map, vec) = parse(input);
     Some(
         vec.iter()
@@ -140,19 +212,22 @@ pub fn part_one(input: &str) -> Option<u32> {
     )
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let (map, _) = parse(input);
+    let part = Part2::new();
+    Some(part.recurse(&map, "in".to_string()))
 }
-fn parse(input: &str) -> (HashMap<String, Workflow>, Vec<Part>) {
+fn parse(input: &str) -> (HashMap<String, Workflow>, Vec<Part1>) {
     let (left, right) = input.trim().split_once("\n\n").unwrap();
     let map = left
         .lines()
         .map(|l| Workflow::from_str(l).unwrap())
         .map(|w| (w.name.clone(), w))
         .collect();
-    let vec = right.lines().map(|l| Part::from_str(l).unwrap()).collect();
+    let vec = right.lines().map(|l| Part1::from_str(l).unwrap()).collect();
     (map, vec)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,6 +246,11 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(167_409_079_868_000));
+    }
+    #[test]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(132_392_981_697_081));
     }
 }
