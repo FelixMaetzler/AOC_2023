@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use advent_of_code::{lcm, lcm_over_slice};
+use advent_of_code::lcm_over_slice;
 
 advent_of_code::solution!(20);
 #[derive(Clone, PartialEq, Debug)]
