@@ -100,7 +100,7 @@ impl<T> Grid<T> {
         if let Some(x) = self.get_east(index) {
             ret.push((x.0, x.1.clone()));
         }
-        if let Some(x) = self.get_east(index) {
+        if let Some(x) = self.get_west(index) {
             ret.push((x.0, x.1.clone()));
         }
         if let Some(x) = self.get_south(index) {
