@@ -50,14 +50,6 @@ impl Brick {
         }
         set
     }
-    fn lower(&mut self) {
-        self.start.lower();
-        self.end.lower();
-    }
-    fn higher(&mut self) {
-        self.start.higher();
-        self.end.higher();
-    }
     fn up(&self) -> Self {
         let mut clone = *self;
         clone.start.z += 1;
@@ -89,43 +81,10 @@ impl FromStr for Cube {
         Ok(Self { x, y, z })
     }
 }
-impl Cube {
-    fn lower(&mut self) {
-        self.z -= 1;
-    }
-    fn higher(&mut self) {
-        self.z += 1;
-    }
-}
 pub fn part_one(input: &str) -> Option<usize> {
     let mut vec = parse(input);
     fall_new(&mut vec);
-    //fall(&mut vec);
     Some(execute1(&vec))
-}
-fn fall(vec: &mut [Brick]) {
-    let mut cont = true;
-    while cont {
-        let mut c = false;
-        for i in 0..vec.len() {
-            let prev = vec[i];
-            while !collision_with(vec, i) {
-                if vec[i].start.z > 1 {
-                    vec[i].lower();
-                } else {
-                    vec[i].lower();
-                    break;
-                }
-            }
-            vec[i].higher();
-            if prev != vec[i] {
-                c = true;
-            }
-        }
-        if !c {
-            cont = false
-        }
-    }
 }
 fn fall_new(vec: &mut [Brick]) {
     vec.sort_by_key(|b| b.start.z);
@@ -213,17 +172,10 @@ fn how_many_fall(
     curr_disintegrated.remove(&index);
     curr_disintegrated.clone()
 }
-fn collision_with(vec: &[Brick], x: usize) -> bool {
-    for i in 0..vec.len() {
-        if i != x && vec[i].collide(&vec[x]) {
-            return true;
-        }
-    }
-    false
-}
+
 pub fn part_two(input: &str) -> Option<usize> {
     let mut vec = parse(input);
-    fall(&mut vec);
+    fall_new(&mut vec);
     Some(execute2(&vec))
 }
 fn parse(input: &str) -> Vec<Brick> {
