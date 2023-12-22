@@ -111,6 +111,33 @@ fn fall(vec: &mut [Brick]) {
         }
     }
 }
+fn how_many_fall(vec: &mut [Brick]) -> usize {
+    let mut set = HashSet::new();
+    let mut cont = true;
+    while cont {
+        let mut c = false;
+        for i in 0..vec.len() {
+            let prev = vec[i];
+            while !collision_with(vec, i) {
+                if vec[i].start.z > 1 {
+                    vec[i].lower();
+                } else {
+                    vec[i].lower();
+                    break;
+                }
+            }
+            vec[i].higher();
+            if prev != vec[i] {
+                c = true;
+                set.insert(i);
+            }
+        }
+        if !c {
+            cont = false
+        }
+    }
+    set.len()
+}
 fn execute1(vec: &Vec<Brick>) -> u32 {
     let mut ctr = 0;
     for i in 0..vec.len() {
@@ -121,6 +148,16 @@ fn execute1(vec: &Vec<Brick>) -> u32 {
         }
     }
     ctr
+}
+fn execute2(vec: &Vec<Brick>) -> usize {
+    (0..vec.len())
+        //.into_par_iter()
+        .map(|i| {
+            let mut clone = vec.clone();
+            clone.remove(i);
+            how_many_fall(&mut clone)
+        })
+        .sum()
 }
 fn smth_fall(vec: &mut [Brick]) -> bool {
     for i in 0..vec.len() {
@@ -149,8 +186,10 @@ fn collision_with(vec: &[Brick], x: usize) -> bool {
     }
     false
 }
-pub fn part_two(input: &str) -> Option<u32> {
-    None
+pub fn part_two(input: &str) -> Option<usize> {
+    let mut vec = parse(input);
+    fall(&mut vec);
+    Some(execute2(&vec))
 }
 fn parse(input: &str) -> Vec<Brick> {
     input
@@ -169,7 +208,6 @@ mod tests {
         assert_eq!(result, Some(5));
     }
     #[test]
-    //#[ignore]
     fn test_part_one_actual() {
         let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(530));
@@ -178,6 +216,11 @@ mod tests {
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
-        assert_eq!(result, None);
+        assert_eq!(result, Some(7));
+    }
+    #[test]
+    fn test_part_two_actual() {
+        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
+        assert_eq!(result, Some(93_292));
     }
 }
