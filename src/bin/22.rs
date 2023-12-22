@@ -1,4 +1,7 @@
-use std::{collections::HashSet, str::FromStr};
+use std::{
+    collections::{HashMap, HashSet},
+    str::FromStr,
+};
 
 advent_of_code::solution!(22);
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -55,6 +58,18 @@ impl Brick {
         self.start.higher();
         self.end.higher();
     }
+    fn up(&self) -> Self {
+        let mut clone = *self;
+        clone.start.z += 1;
+        clone.end.z += 1;
+        clone
+    }
+    fn down(&self) -> Self {
+        let mut clone = *self;
+        clone.start.z -= 1;
+        clone.end.z -= 1;
+        clone
+    }
 }
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 struct Cube {
@@ -82,9 +97,10 @@ impl Cube {
         self.z += 1;
     }
 }
-pub fn part_one(input: &str) -> Option<u32> {
+pub fn part_one(input: &str) -> Option<usize> {
     let mut vec = parse(input);
-    fall(&mut vec);
+    fall_new(&mut vec);
+    //fall(&mut vec);
     Some(execute1(&vec))
 }
 fn fall(vec: &mut [Brick]) {
@@ -111,72 +127,91 @@ fn fall(vec: &mut [Brick]) {
         }
     }
 }
-fn how_many_fall(vec: &mut [Brick]) -> usize {
-    let mut set = HashSet::new();
-    let mut cont = true;
-    while cont {
-        let mut c = false;
-        for i in 0..vec.len() {
-            let prev = vec[i];
-            while !collision_with(vec, i) {
-                if vec[i].start.z > 1 {
-                    vec[i].lower();
-                } else {
-                    vec[i].lower();
-                    break;
-                }
-            }
-            vec[i].higher();
-            if prev != vec[i] {
-                c = true;
-                set.insert(i);
-            }
-        }
-        if !c {
-            cont = false
-        }
+fn fall_new(vec: &mut [Brick]) {
+    vec.sort_by_key(|b| b.start.z);
+    let mut map = HashMap::new();
+    for brick in vec.iter_mut() {
+        let z = get_height(&map, brick);
+        let diff = brick.end.z - brick.start.z;
+        brick.start.z = z;
+        brick.end.z = z + diff;
+        set_height(&mut map, brick);
     }
-    set.len()
 }
-fn execute1(vec: &Vec<Brick>) -> u32 {
-    let mut ctr = 0;
-    for i in 0..vec.len() {
-        let mut clone = vec.clone();
-        clone.remove(i);
-        if !smth_fall(&mut clone) {
-            ctr += 1;
+fn get_height(map: &HashMap<(u32, u32), u32>, brick: &Brick) -> u32 {
+    let mut curr_max = None;
+    for x in brick.start.x..=brick.end.x {
+        for y in brick.start.y..=brick.end.y {
+            curr_max = curr_max.max(map.get(&(y, x)));
         }
     }
-    ctr
+    curr_max.unwrap_or(&0) + 1
+}
+fn set_height(map: &mut HashMap<(u32, u32), u32>, brick: &Brick) {
+    for x in brick.start.x..=brick.end.x {
+        for y in brick.start.y..=brick.end.y {
+            map.entry((y, x))
+                .and_modify(|e| *e = brick.end.z)
+                .or_insert(brick.end.z);
+        }
+    }
+}
+fn build_supports_map(vec: &[Brick]) -> HashMap<usize, HashSet<usize>> {
+    vec.iter()
+        .enumerate()
+        .map(|(i, b)| (i, collisions_with(vec, i, &b.up())))
+        .collect()
+}
+fn build_is_supported_by_map(vec: &[Brick]) -> HashMap<usize, HashSet<usize>> {
+    vec.iter()
+        .enumerate()
+        .map(|(i, b)| (i, collisions_with(vec, i, &b.down())))
+        .collect()
+}
+fn collisions_with(vec: &[Brick], j: usize, x: &Brick) -> HashSet<usize> {
+    vec.iter()
+        .enumerate()
+        .filter(|(i, _)| i != &j)
+        .filter(|(_, b)| x.collide(b))
+        .map(|(i, _)| i)
+        .collect()
+}
+
+fn execute1(vec: &[Brick]) -> usize {
+    let is_supported_by = build_is_supported_by_map(vec);
+    let support = build_supports_map(vec);
+    support
+        .values()
+        .filter(|s| s.iter().all(|i| is_supported_by.get(i).unwrap().len() > 1))
+        .count()
 }
 fn execute2(vec: &Vec<Brick>) -> usize {
+    let is_supported_by = build_is_supported_by_map(vec);
+    let supports = build_supports_map(vec);
+
     (0..vec.len())
-        //.into_par_iter()
-        .map(|i| {
-            let mut clone = vec.clone();
-            clone.remove(i);
-            how_many_fall(&mut clone)
-        })
+        .map(|i| how_many_fall(&supports, &is_supported_by, i, &mut HashSet::new()).len())
         .sum()
 }
-fn smth_fall(vec: &mut [Brick]) -> bool {
-    for i in 0..vec.len() {
-        let prev = vec[i];
-        while !collision_with(vec, i) {
-            if vec[i].start.z > 1 {
-                vec[i].lower();
-            } else {
-                vec[i].lower();
-                break;
-            }
-        }
-        vec[i].higher();
-        if prev != vec[i] {
-            return true;
+fn how_many_fall(
+    supports: &HashMap<usize, HashSet<usize>>,
+    is_supported_by: &HashMap<usize, HashSet<usize>>,
+    index: usize,
+    curr_disintegrated: &mut HashSet<usize>,
+) -> HashSet<usize> {
+    let sup = supports.get(&index).unwrap();
+    curr_disintegrated.insert(index);
+    for i in sup {
+        let n = is_supported_by.get(i).unwrap();
+        let diff = n.difference(curr_disintegrated);
+        if diff.count() == 0 {
+            let ret = how_many_fall(supports, is_supported_by, *i, curr_disintegrated);
+            curr_disintegrated.extend(ret.into_iter());
+            curr_disintegrated.insert(*i);
         }
     }
-
-    false
+    curr_disintegrated.remove(&index);
+    curr_disintegrated.clone()
 }
 fn collision_with(vec: &[Brick], x: usize) -> bool {
     for i in 0..vec.len() {
