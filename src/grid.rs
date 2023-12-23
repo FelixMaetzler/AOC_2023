@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::fmt::Write;
 use std::ops::Deref;
+use std::ops::DerefMut;
 use std::ops::Index;
 use std::ops::IndexMut;
 pub trait OwnIndex<T>
@@ -343,10 +344,9 @@ impl<T> Deref for Grid<T> {
         &self.data[..]
     }
 }
-/*
+
 impl<T> DerefMut for Grid<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data[..]
     }
 }
-*/
