@@ -1,10 +1,5 @@
-pub trait NonNegative {}
-impl NonNegative for u8 {}
-impl NonNegative for u16 {}
-impl NonNegative for u32 {}
-impl NonNegative for u64 {}
-impl NonNegative for u128 {}
-impl NonNegative for usize {}
+use crate::NonNegative;
+
 /// Computes the Lowest Common Multiple between two Non-Negative numbers
 pub fn lcm<T>(x: T, y: T) -> T
 where

@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use advent_of_code::{Grid, OwnIndex};
+use advent_of_code::{Bitmask, Grid, OwnIndex};
 
 advent_of_code::solution!(23);
 #[derive(Eq, PartialEq, Clone)]
@@ -32,27 +32,7 @@ impl TryFrom<char> for Tile {
     }
 }
 pub fn part_one(input: &str) -> Option<u32> {
-    let grid = parse(input);
-    let start = (0..grid.width())
-        .map(|x| (x, grid.get((0, x)).unwrap()))
-        .find(|(_, t)| t == &&Tile::Path)
-        .unwrap()
-        .0;
-    let end = (0..grid.width())
-        .map(|x| {
-            (
-                (grid.height() - 1, x),
-                grid.get((grid.height() - 1, x)).unwrap(),
-            )
-        })
-        .find(|(_, t)| t == &&Tile::Path)
-        .unwrap()
-        .0
-        .to_flat_index(&grid);
-    //let tree = build_graph(&grid, start, end);
-    let tree = build_graph(&grid, start, end);
-    let erg = recurse(&tree, start, end, 0, &HashSet::new());
-    Some(erg.unwrap())
+    execute(input)
 }
 fn get_all_neigbors(grid: &Grid<Tile>, index: usize) -> Vec<usize> {
     let n = grid.neighbours4_with_index(index);
@@ -168,34 +148,26 @@ fn build_graph(
     map
 }
 fn recurse(
-    tree: &HashMap<usize, HashSet<(usize, u32)>>,
+    tree: &Vec<Vec<(usize, u32)>>,
     curr: usize,
     end: usize,
     sum: u32,
-    visited: &HashSet<usize>,
+    visited: Bitmask<usize>,
 ) -> Option<u32> {
     if curr == end {
         return Some(sum);
     }
-    let mut neigbors = tree.get(&curr).unwrap().clone();
-    neigbors.retain(|v| !visited.contains(&v.0));
-    let mut visited = visited.clone();
-    visited.insert(curr);
+    let mut neigbors = tree[curr].clone();
+    neigbors.retain(|v| !visited.get(v.0));
+    let mut visited = visited;
+    visited.set(curr);
     neigbors
         .into_iter()
-        .filter_map(|v| recurse(tree, v.0, end, sum + v.1, &visited))
+        .filter_map(|v| recurse(tree, v.0, end, sum + v.1, visited))
         .max()
 }
-
-pub fn part_two(input: &str) -> Option<u32> {
-    let mut grid = parse(input);
-    grid.iter_mut().for_each(|t| {
-        *t = match t {
-            Tile::Path => Tile::Path,
-            Tile::Slope(_) => Tile::Path,
-            Tile::Forrest => Tile::Forrest,
-        }
-    });
+fn execute(input: &str) -> Option<u32> {
+    let grid = parse(input);
     let start = (0..grid.width())
         .map(|x| (x, grid.get((0, x)).unwrap()))
         .find(|(_, t)| t == &&Tile::Path)
@@ -213,8 +185,41 @@ pub fn part_two(input: &str) -> Option<u32> {
         .0
         .to_flat_index(&grid);
     let tree = build_graph(&grid, start, end);
-    let erg = recurse(&tree, start, end, 0, &HashSet::new());
+    let mut map = HashMap::new();
+    let mut map_rev = HashMap::new();
+    let mut ctr = 0;
+    for v in tree.keys() {
+        if map.contains_key(v) {
+            continue;
+        } else {
+            map.insert(v, ctr);
+            map_rev.insert(ctr, v);
+            ctr += 1;
+        }
+    }
+    let mut vec = Vec::with_capacity(map.len());
+    for i in 0..tree.len() {
+        let s = tree.get(map_rev.get(&i).unwrap()).unwrap();
+        let s = s
+            .iter()
+            .map(|(d, val)| (*map.get(d).unwrap(), *val))
+            .collect::<HashSet<_>>();
+        vec.push(s);
+    }
+    let erg = recurse(
+        &vec.into_iter()
+            .map(|s| s.into_iter().collect::<Vec<_>>())
+            .collect::<Vec<_>>(),
+        *map.get(&start).unwrap(),
+        *map.get(&end).unwrap(),
+        0,
+        Bitmask::default(),
+    );
     Some(erg.unwrap())
+}
+pub fn part_two(input: &str) -> Option<u32> {
+    let input = input.replace(|ch| matches!(ch, '<' | '>' | '^' | 'v'), ".");
+    execute(&input)
 }
 fn parse(input: &str) -> Grid<Tile> {
     Grid::from_iter_iter(
