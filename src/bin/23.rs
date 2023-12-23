@@ -3,14 +3,14 @@ use std::collections::{HashMap, HashSet};
 use advent_of_code::{Grid, OwnIndex};
 
 advent_of_code::solution!(23);
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 enum Dir {
     Up,
     Down,
     Left,
     Right,
 }
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone)]
 enum Tile {
     Path,
     Forrest,
@@ -49,21 +49,18 @@ pub fn part_one(input: &str) -> Option<u32> {
         .unwrap()
         .0
         .to_flat_index(&grid);
-    let erg = recurse(&grid, start, end, &HashSet::new());
+    //let tree = build_graph(&grid, start, end);
+    let tree = build_graph_new(&grid, start, end);
+    dbg!(&tree);
+    let erg = recurse(&tree, start, end, 0, &HashSet::new());
     Some(erg.unwrap())
 }
-fn recurse(grid: &Grid<Tile>, curr: usize, end: usize, visited: &HashSet<usize>) -> Option<u32> {
-    if curr == end {
-        return Some(visited.len() as u32);
-    }
-    let mut neigbors = get_neigbors(grid, curr);
-    neigbors.retain(|v| !visited.contains(v));
-    let mut visited = visited.clone();
-    visited.insert(curr);
-    neigbors
-        .into_iter()
-        .filter_map(|v| recurse(grid, v, end, &visited))
-        .max()
+fn get_all_neigbors(grid: &Grid<Tile>, index: usize) -> Vec<usize> {
+    let n = grid.neighbours4_with_index(index);
+    n.into_iter()
+        .filter(|(_, t)| t != &Tile::Forrest)
+        .map(|(i, _)| i.to_flat_index(grid))
+        .collect()
 }
 fn get_neigbors(grid: &Grid<Tile>, index: usize) -> Vec<usize> {
     let curr = grid.get(index).unwrap();
@@ -111,7 +108,70 @@ fn get_neigbors(grid: &Grid<Tile>, index: usize) -> Vec<usize> {
         Tile::Forrest => unreachable!(),
     }
 }
-fn build_graph_part_2(
+fn find_next_intersection(
+    grid: &Grid<Tile>,
+    start_intersection: usize,
+    start_dir: usize,
+    intersections: &[usize],
+) -> Option<(usize, u32)> {
+    if start_intersection == 456 {
+        dbg!("here");
+    }
+    let mut visited = HashSet::new();
+    visited.insert(start_intersection);
+    let mut ctr = 0;
+    let mut curr = start_dir;
+    loop {
+        if intersections.contains(&curr) {
+            return Some((curr, ctr + 1));
+        }
+        let mut n = get_neigbors(grid, curr);
+        n.retain(|e| !visited.contains(e));
+        match n.len() {
+            0 => return None,
+            1 => {
+                ctr += 1;
+                visited.insert(curr);
+                curr = n[0]
+            }
+            2 | 3 => return Some((curr, ctr + 1)),
+            _ => {
+                unreachable!("There cant be more than 3 neigbors (excluding the way we came frome)")
+            }
+        }
+    }
+}
+fn build_graph_new(
+    grid: &Grid<Tile>,
+    start: usize,
+    end: usize,
+) -> HashMap<usize, HashSet<(usize, u32)>> {
+    let mut map = HashMap::new();
+    let intersections = grid
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| t != &&Tile::Forrest)
+        .filter(|(i, _)| get_all_neigbors(grid, *i).len() > 2)
+        .map(|(i, _)| i)
+        .chain(vec![start, end])
+        .collect::<Vec<_>>();
+    dbg!(&intersections);
+    for inter in &intersections {
+        let neig = get_neigbors(grid, *inter);
+        for n in neig {
+            if let Some(erg) = find_next_intersection(grid, *inter, n, &intersections) {
+                map.entry(*inter)
+                    .and_modify(|s: &mut HashSet<(usize, u32)>| {
+                        s.insert(erg);
+                    })
+                    .or_insert(HashSet::from_iter(vec![erg]));
+            }
+        }
+        map.entry(*inter).or_default();
+    }
+    map
+}
+fn build_graph(
     grid: &Grid<Tile>,
     start: usize,
     end: usize,
@@ -123,7 +183,6 @@ fn build_graph_part_2(
         .filter(|(i, _)| get_neigbors(grid, *i).len() > 2)
         .map(|(i, _)| i)
         .chain(vec![start, end])
-        //.map(|i| i.to_2d_index(grid))
         .collect::<Vec<_>>();
     let mut map = HashMap::new();
     for i in 0..intersections.len() - 1 {
@@ -136,13 +195,17 @@ fn build_graph_part_2(
                 &HashSet::new(),
             );
             if let Some(dist) = dist {
-                map.insert(
-                    (
-                        intersections[i], //.to_2d_index(grid),
-                        intersections[j], //.to_2d_index(grid),
-                    ),
-                    dist,
-                );
+                map.insert((intersections[i], intersections[j]), dist);
+            }
+            let dist = dist_between(
+                grid,
+                intersections[j],
+                intersections[i],
+                &intersections,
+                &HashSet::new(),
+            );
+            if let Some(dist) = dist {
+                map.insert((intersections[j], intersections[i]), dist);
             }
         }
     }
@@ -154,12 +217,6 @@ fn build_graph_part_2(
                 s.insert((n2, val));
             })
             .or_insert(HashSet::from_iter(vec![(n2, val)]));
-        new_map
-            .entry(n2)
-            .and_modify(|s: &mut HashSet<(usize, u32)>| {
-                s.insert((n1, val));
-            })
-            .or_insert(HashSet::from_iter(vec![(n1, val)]));
     }
     new_map
 }
@@ -183,7 +240,7 @@ fn dist_between(
         .filter_map(|v| dist_between(grid, v, end, tabu_list, &visited))
         .max()
 }
-fn recurse2(
+fn recurse(
     tree: &HashMap<usize, HashSet<(usize, u32)>>,
     curr: usize,
     end: usize,
@@ -199,9 +256,10 @@ fn recurse2(
     visited.insert(curr);
     neigbors
         .into_iter()
-        .filter_map(|v| recurse2(tree, v.0, end, sum + v.1, &visited))
+        .filter_map(|v| recurse(tree, v.0, end, sum + v.1, &visited))
         .max()
 }
+
 pub fn part_two(input: &str) -> Option<u32> {
     let mut grid = parse(input);
     grid.iter_mut().for_each(|t| {
@@ -227,8 +285,8 @@ pub fn part_two(input: &str) -> Option<u32> {
         .unwrap()
         .0
         .to_flat_index(&grid);
-    let tree = build_graph_part_2(&grid, start, end);
-    let erg = recurse2(&tree, start, end, 0, &HashSet::new());
+    let tree = build_graph(&grid, start, end);
+    let erg = recurse(&tree, start, end, 0, &HashSet::new());
     Some(erg.unwrap())
 }
 fn parse(input: &str) -> Grid<Tile> {
