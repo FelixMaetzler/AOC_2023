@@ -50,8 +50,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         .0
         .to_flat_index(&grid);
     //let tree = build_graph(&grid, start, end);
-    let tree = build_graph_new(&grid, start, end);
-    dbg!(&tree);
+    let tree = build_graph(&grid, start, end);
     let erg = recurse(&tree, start, end, 0, &HashSet::new());
     Some(erg.unwrap())
 }
@@ -114,9 +113,6 @@ fn find_next_intersection(
     start_dir: usize,
     intersections: &[usize],
 ) -> Option<(usize, u32)> {
-    if start_intersection == 456 {
-        dbg!("here");
-    }
     let mut visited = HashSet::new();
     visited.insert(start_intersection);
     let mut ctr = 0;
@@ -134,14 +130,15 @@ fn find_next_intersection(
                 visited.insert(curr);
                 curr = n[0]
             }
-            2 | 3 => return Some((curr, ctr + 1)),
             _ => {
-                unreachable!("There cant be more than 3 neigbors (excluding the way we came frome)")
+                unreachable!(
+                    "If there are more than 2, it is a intersection and should be handled earlier"
+                )
             }
         }
     }
 }
-fn build_graph_new(
+fn build_graph(
     grid: &Grid<Tile>,
     start: usize,
     end: usize,
@@ -155,7 +152,6 @@ fn build_graph_new(
         .map(|(i, _)| i)
         .chain(vec![start, end])
         .collect::<Vec<_>>();
-    dbg!(&intersections);
     for inter in &intersections {
         let neig = get_neigbors(grid, *inter);
         for n in neig {
@@ -170,75 +166,6 @@ fn build_graph_new(
         map.entry(*inter).or_default();
     }
     map
-}
-fn build_graph(
-    grid: &Grid<Tile>,
-    start: usize,
-    end: usize,
-) -> HashMap<usize, HashSet<(usize, u32)>> {
-    let intersections = grid
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| t != &&Tile::Forrest)
-        .filter(|(i, _)| get_neigbors(grid, *i).len() > 2)
-        .map(|(i, _)| i)
-        .chain(vec![start, end])
-        .collect::<Vec<_>>();
-    let mut map = HashMap::new();
-    for i in 0..intersections.len() - 1 {
-        for j in i + 1..intersections.len() {
-            let dist = dist_between(
-                grid,
-                intersections[i],
-                intersections[j],
-                &intersections,
-                &HashSet::new(),
-            );
-            if let Some(dist) = dist {
-                map.insert((intersections[i], intersections[j]), dist);
-            }
-            let dist = dist_between(
-                grid,
-                intersections[j],
-                intersections[i],
-                &intersections,
-                &HashSet::new(),
-            );
-            if let Some(dist) = dist {
-                map.insert((intersections[j], intersections[i]), dist);
-            }
-        }
-    }
-    let mut new_map = HashMap::new();
-    for ((n1, n2), val) in map {
-        new_map
-            .entry(n1)
-            .and_modify(|s: &mut HashSet<(usize, u32)>| {
-                s.insert((n2, val));
-            })
-            .or_insert(HashSet::from_iter(vec![(n2, val)]));
-    }
-    new_map
-}
-fn dist_between(
-    grid: &Grid<Tile>,
-    curr: usize,
-    end: usize,
-    tabu_list: &Vec<usize>,
-    visited: &HashSet<usize>,
-) -> Option<u32> {
-    if curr == end {
-        return Some(visited.len() as u32);
-    }
-    let mut neigbors = get_neigbors(grid, curr);
-    neigbors.retain(|v| !visited.contains(v));
-    neigbors.retain(|v| !tabu_list.contains(v) || v == &end);
-    let mut visited = visited.clone();
-    visited.insert(curr);
-    neigbors
-        .into_iter()
-        .filter_map(|v| dist_between(grid, v, end, tabu_list, &visited))
-        .max()
 }
 fn recurse(
     tree: &HashMap<usize, HashSet<(usize, u32)>>,
