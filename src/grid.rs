@@ -350,3 +350,36 @@ impl<T> DerefMut for Grid<T> {
         &mut self.data[..]
     }
 }
+impl<T> std::ops::Sub for Grid<T>
+where
+    T: std::ops::Sub<Output = T>,
+{
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        let n = self.width();
+        Grid::from_iter(self.into_iter().zip(rhs).map(|(l, r)| l - r), n)
+    }
+}
+impl<T> std::ops::Add for Grid<T>
+where
+    T: std::ops::Add<Output = T>,
+{
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let n = self.width();
+        Grid::from_iter(self.into_iter().zip(rhs).map(|(l, r)| l + r), n)
+    }
+}
+impl<T> std::ops::Neg for Grid<T>
+where
+    T: std::ops::Neg<Output = T>,
+{
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        let n = self.width();
+        Grid::from_iter(self.into_iter().map(|v| -v), n)
+    }
+}
