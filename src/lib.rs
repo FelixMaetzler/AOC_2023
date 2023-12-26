@@ -12,3 +12,5 @@ pub mod bitmask;
 pub use bitmask::*;
 pub mod nonnegative;
 pub use nonnegative::*;
+pub mod graph;
+pub mod stoer_wagner;
