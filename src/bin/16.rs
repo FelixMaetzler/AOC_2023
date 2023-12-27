@@ -123,7 +123,6 @@ mod tests {
         assert_eq!(result, Some(51));
     }
     #[test]
-    #[ignore]
     fn test_part_two_actual() {
         let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(7_324));
