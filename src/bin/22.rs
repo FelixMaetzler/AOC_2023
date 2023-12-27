@@ -87,7 +87,7 @@ pub fn part_one(input: &str) -> Option<usize> {
     Some(execute1(&vec))
 }
 fn fall_new(vec: &mut [Brick]) {
-    vec.sort_by_key(|b| b.start.z);
+    vec.sort_unstable_by_key(|b| b.start.z);
     let mut map = HashMap::new();
     for brick in vec.iter_mut() {
         let z = get_height(&map, brick);
@@ -199,7 +199,6 @@ mod tests {
         let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
         assert_eq!(result, Some(530));
     }
-
     #[test]
     fn test_part_two() {
         let result = part_two(&advent_of_code::template::read_file("examples", DAY));
