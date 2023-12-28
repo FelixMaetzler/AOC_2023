@@ -1,6 +1,5 @@
-use advent_of_code::{Grid, OwnIndex};
-use arrow::datatypes::i256;
-use num_traits::cast::ToPrimitive;
+use advent_of_code::{i256::i256, Grid, OwnIndex};
+
 use std::{iter::repeat, str::FromStr};
 /// This function solves a * x = b where a is a matrix and x is unknown
 fn solve_lgs(a: &Grid<i256>, b: Vec<i256>) -> Vec<i256> {
@@ -38,7 +37,7 @@ fn determinant(matrix: &Grid<i256>) -> i256 {
     for i in 0..n {
         let minor = minor(matrix, (0, i));
         let sign = if i % 2 == 0 { i256::ONE } else { -i256::ONE };
-        det = det + sign * matrix.get((0, i)).unwrap() * minor;
+        det = det + sign * *matrix.get((0, i)).unwrap() * minor;
     }
     det
 }
