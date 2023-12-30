@@ -139,7 +139,7 @@ impl FromStr for Point {
 enum Intersection {
     ParallelOrIdentical,
     Past,
-    Intersection(f64, f64),
+    Intersect(f64, f64),
 }
 advent_of_code::solution!(24);
 
@@ -164,7 +164,7 @@ fn execute(input: &str, min: i256, max: i256) -> Option<u32> {
 }
 fn solve(h1: &Hailstone, h2: &Hailstone, min: i256, max: i256) -> bool {
     let inter = calc_intersection(h1, h2);
-    if let Intersection::Intersection(x, y) = inter {
+    if let Intersection::Intersect(x, y) = inter {
         (min.to_f64().unwrap() <= x && x <= max.to_f64().unwrap())
             && (min.to_f64().unwrap() <= y && y <= max.to_f64().unwrap())
     } else {
@@ -185,7 +185,7 @@ fn calc_intersection(h1: &Hailstone, h2: &Hailstone) -> Intersection {
     }
     let x = h1.pos.x.to_f64().unwrap() + s * h1.vel.x.to_f64().unwrap();
     let y = h1.pos.y.to_f64().unwrap() + s * h1.vel.y.to_f64().unwrap();
-    Intersection::Intersection(x, y)
+    Intersection::Intersect(x, y)
 }
 fn det_2x2(a: i256, b: i256, c: i256, d: i256) -> i256 {
     a * d - b * c
